@@ -1,9 +1,12 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
-#include <Eigen/Eigen>
-#include <limits>
+#include <sstream>
+#include "Traccia.hpp"
+#include "Utils.hpp"
+
 using namespace std;
-using namespace Eigen;
+using vec3 = vector<vector<vector<double>>>;
 
 // Funzione che controlla che due fratture si intersechino e calcola i punti della traccia esistente
 // Fracture è il nome dell'oggetto che contiene tutte le fratture.
@@ -47,7 +50,7 @@ void Find_Traces(Fracture& frac)
     }
 }
 
-// FUnzione che determina se la traccia è passante
+// Funzione che determina se la traccia è passante
 void Check_Passing (Traces& traces, Fracture& fractures)
 {
     for(unsigned int k = 0; k<traces.size(); k++)
@@ -131,6 +134,14 @@ struct Traces
 
 int main()
 {
-    cout << "hello world" << endl;
-  return 0;
-}
+    vec3 fracture;
+    string path = "C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Project/DATA/FR3_data.txt";
+    if(!importFractures(path, fracture)){
+        cerr << "Errore nell'import" << endl;
+        return false;
+    }
+    else
+        cout << "Import effettuato con successo" << endl;
+
+    return 0;
+
