@@ -11,6 +11,7 @@ using namespace std;
 using namespace Eigen;
 using vec3 = vector<vector<vector<double>>>;
 
+/*
 <<<<<<< Updated upstream
 // Funzione che controlla che due fratture si intersechino e calcola i punti della traccia esistente
 // Fracture è il nome dell'oggetto che contiene tutte le fratture.
@@ -135,15 +136,9 @@ struct Traces
     map<int,bool> passing_traces; // id_traccia tips 1/0
 
 };
-=======
-vector<double> vettore(vec3 fracture, vector <double> v, unsigned int i, unsigned int j) // i indica quale frattura considero
-{
-    v = { fracture[i][j][0] - fracture[i][j-1][0],
-          fracture[i][j][1] - fracture[i][j-1][1],
-          fracture[i][j][2] - fracture[i][j-1][2] };
+=======*/
 
-    return v;
-}
+//************************************************************************************************************
 
 vector<double> crossProduct(const vector<double>& u, const vector<double>& v) {
     vector<double> w(3);
@@ -159,10 +154,78 @@ double dotProduct(const vector<double>& v1, const vector<double>& v2)
     for (int i = 0; i < 3; ++i) {
         ris += v1[i] * v2[i];
     }
-    return -ris;
+    return ris;
 }
 
->>>>>>> Stashed changes
+vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2)
+{
+    vector<double> ris(3);
+    for (int i = 0; i < 3; ++i) {
+        ris[i] = v2[i] - v1[i];
+    }
+    return ris;
+}
+
+//**************************************************************************************************************
+
+// Funzione che calcola il piano che contiene una certa frattura, prende in input 3 punti e restituisce un vettore 4x1
+// piano identificato da (a,b,c,d) => ax+by+cz+d=0
+vector<double> pianoFrattura(const vector<double>& v1, const vector<double>& v2, const vector<double>& v3)
+{
+    vector<double> AB = sottrazione(v1, v2);
+    vector<double> AC = sottrazione(v1, v3);
+    vector <double> n1 = crossProduct(AB, AC); // vettore normale al piano
+
+    double d = - dotProduct(n1,v1);
+    vector <double> piano = n1;
+    piano.push_back(d);
+
+    return piano;
+}
+
+
+// Funzione che calcola la forma parametrica di una retta e la trasforma in cartesiana
+// prende in input 2 punti e restituisce due vettori 4x1 che identificano la retta mediante il seguente calcolo
+// (x-x0)/a  = (y-y0)/b e (x-x0)/a  = (z-z0)/c dove (a,b,c) coincide con la direzione della retta
+void equazioneRetta(const vector<double>& v1, const vector<double>& v2,
+                    vector<double>& pi1, vector<double>& pi2)
+{
+    vector<double> n = sottrazione(v1,v2); // direzione retta, retta: v1+t*n (P0+t*n, n reale)
+
+    // converto in forma cartesiana
+    pi1[0] = n[1];
+    pi1[1] = -n[0];
+    pi1[3] = n[0]*v1[1] - n[1]*v1[0];
+
+    pi2[0] = n[2];
+    pi2[2] = -n[0];
+    pi2[3] = n[0]*v1[2] - n[2]*v1[0];
+}
+
+
+// Funzione che dati 4 vettori che rappresentano i piano, restituisce il punto di intersezione
+Vector3d soluzione(const vector<double>& piano1, const vector<double>& piano2, const vector<double>& pi1, const vector<double>& pi2)
+{
+    Matrix<double, 4, 3> coeff;
+    coeff.row(0) << piano1[0], piano1[1], piano1[2];
+    coeff.row(1) << piano2[0], piano2[1], piano2[2];
+    coeff.row(2) << pi1[0], pi1[1], pi1[2];
+    coeff.row(3) << pi2[0], pi2[1], pi2[2];
+
+    Vector4d termineNoto;
+    termineNoto[0] = -piano1[3];
+    termineNoto[1] = -piano2[3];
+    termineNoto[2] = -pi1[3];
+    termineNoto[3] = -pi2[3];
+
+    HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
+    Vector3d sol = qr.solve(termineNoto);
+
+    return sol;
+}
+
+
+//>>>>>>> Stashed changes
 
 int main()
 {
@@ -175,90 +238,20 @@ int main()
     else
         cout << "Import effettuato con successo" << endl;
 
-    // vediamo come calcolare i punti di intersezione tra due poligoni
-    // scelgo frattura 0 e frattura 2
 
-    vector <double> AB(3);
-    vector <double> BC(3);
-    vector <double> LM(3);
-    vector <double> MN(3);
-
-    AB = vettore(fracture, AB, 0, 1);
-    BC = vettore(fracture, BC, 0, 2);
-    LM = vettore(fracture, LM, 2, 1);
-    MN = vettore(fracture, MN, 2, 2);
-
-    vector <double> n1 = crossProduct(AB, BC);
-    vector <double> n2 = crossProduct(LM, MN);
-
-
-
-    // piano per frattura 0 identificato da (a,b,c,d)
-    double d1 = dotProduct(n1,fracture[0][0]);
-    vector <double> piano0 = n1;
-    piano0.push_back(d1);
-
-    // piano per frattura 2 identificato da (a,b,c,d)
-    double d2 = dotProduct(n2,fracture[2][0]);
-    vector <double> piano2 = n2;
-    piano2.push_back(d2);
-
-    // retta per AD, identificata dal punto A e il vettore AD
-    vector <double> AD = { fracture[0][3][0] - fracture[0][0][0],
-                         fracture[0][3][1] - fracture[0][0][1],
-                         fracture[0][3][2] - fracture[0][0][2] };
-
-    // converto la forma parametrica di AD in forma cartesiana, quindi trovo i due piani nella forma di prima
-    // x = 0, z = 0 è la forma cartesiana di questa retta
+    // piano frattura 0
+    vector<double> piano1 = pianoFrattura(fracture[0][0], fracture[0][1], fracture[0][2]);
+    vector<double> piano2 = pianoFrattura(fracture[1][0], fracture[1][1], fracture[1][2]);
+    // retta AD
     vector <double> pi1(4);
     vector <double> pi2(4);
-    vector <double> pi3(4);
-
-
-    pi1[0] = AD[1];
-    pi1[1] = -AD[0];
-    pi1[3] = AD[0]*fracture[0][0][1] - AD[1]*fracture[0][0][0];
-
-
-    pi2[0] = AD[2];
-    pi2[2] = -AD[0];
-    pi2[3] = AD[0]*fracture[0][0][2] - AD[2]*fracture[0][0][0];
-
-    pi3[1] = AD[2];
-    pi3[2] = -AD[1];
-    pi3[3] = AD[1]*fracture[0][0][2] - AD[2]*fracture[0][0][1];
-
-    // ora scivo la matrice dei coefficienti fatta da piano0, piano 2, pi1, pi3 e vettore delle incognite (x,y,z,1),
-    // l'intersezione sarà (x,y,z)
-
-    Matrix<double, 4, 3> coeff;
-    coeff.row(0) << piano0[0], piano0[1], piano0[2];
-    coeff.row(1) << piano2[0], piano2[1], piano2[2];
-    coeff.row(2) << pi1[0], pi1[1], pi1[2];
-    coeff.row(3) << pi3[0], pi3[1], pi3[2];
-
-    Vector4d termineNoto;
-    termineNoto[0] = piano0[3];
-    termineNoto[1] = piano2[3];
-    termineNoto[2] = pi1[3];
-    termineNoto[3] = pi3[3];
-
-    HouseholderQR<Eigen::Matrix<double, 4, 3>> qr(coeff);
-    Vector3d soluzione = qr.solve(termineNoto);
+    equazioneRetta(fracture[0][2], fracture[0][3], pi1, pi2);
+    Vector3d sol = soluzione(piano1, piano2, pi1, pi2);
     for(unsigned int i = 0; i < 3; i++)
-        cout << soluzione[i] << " ";
+        cout << sol[i] << " ";
     cout << endl;
 
 
-
-
-
-
-
-
-
-
-
-
     return 0;
+}
 
