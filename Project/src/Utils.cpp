@@ -71,7 +71,7 @@ bool importFractures(const string& path, vec3& v)
                 v_transposed[i][j][k] = v[i][k][j];
 
     v = v_transposed;
-
+/*
     // Stampa dati
     for(unsigned int i = 0; i < N; i++)
     {
@@ -83,7 +83,7 @@ bool importFractures(const string& path, vec3& v)
             cout << endl;
         }
         cout << endl;
-    }
+    }*/
 
     return true;
 }
