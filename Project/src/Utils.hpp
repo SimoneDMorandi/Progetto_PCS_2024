@@ -30,3 +30,6 @@ vector<double> crossProduct(const vector<double>& u, const vector<double>& v);
 double dotProduct(const vector<double>& v1, const vector<double>& v2);
 
 vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2);
+
+// Funzione che calcola il Bounding Box, date le coordinate di un poligono.
+vector<vector<double>> Calculate_Bounding_Box(vector<vector<double>>& polygon);

@@ -15,9 +15,8 @@ struct Fractures
     vector<int> frac_id;
     vector<int> N_vert;
     vector<vector<vector<double>>> frac_vertices;  //Vector3d
-    vector<int> N_traces = {};
+    vector<int> N_traces;
 };
-
 // Definisco la struttura che contiene le informazioni della traccia
 struct Traces
 {

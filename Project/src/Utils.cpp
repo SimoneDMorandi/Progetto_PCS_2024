@@ -5,6 +5,7 @@
 #include <sstream>
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
+#include <Eigen/QR>
 #include <string>
 #include <vector>
 
@@ -67,7 +68,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
     // Effettua la trasposizione
     for (unsigned int i = 0; i < fractures_list.N_frac; i++)
         for (unsigned int k = 0; k < 3; k++)
-            for (unsigned int j = 0; j < fractures_list.N_vert[i]; j++)
+            for (int j = 0; j < fractures_list.N_vert[i]; j++)
                 v_transposed[i][j][k] = fractures_list.frac_vertices[i][k][j];
 
     // QUI COPIO, SI PUO' OTTIMIZZARE
@@ -77,7 +78,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
     for(unsigned int i = 0; i < fractures_list.N_frac; i++)
     {
         cout << "Id frattura: \t"<< i << endl;
-        for(unsigned int j = 0; j < fractures_list.N_vert[i]; j++)
+        for( int j = 0; j < fractures_list.N_vert[i]; j++)
         {
             for(unsigned int k = 0; k < 3; k++)
                 cout << v_transposed[i][j][k] << "\t";
@@ -141,7 +142,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1], pi1,pi2);
                     }
 
-                    Matrix<double, 4, 3> coeff;
+                    Matrix<double, 4, 3> coeff;   //CAMBIARE COL NUMERO GENERALE
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
@@ -153,9 +154,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     termineNoto[2] = -pi1[3];
                     termineNoto[3] = -pi2[3];
                     HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                    if (qr.rank() == 3)
+                    if (coeff.rank() == 3)
                     {
-                        points.push_back(qr.Solve(termineNoto));
+                        points.push_back(qr.solve(termineNoto));
                     }
                     else
                     {
@@ -192,7 +193,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     termineNoto[2] = -pi1[3];
                     termineNoto[3] = -pi2[3];
                     HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                    if (qr.rank() == 3)
+                    if (coeff.rank() == 3)
                     {
                         points.push_back(qr.solve(termineNoto));
                     }
@@ -205,7 +206,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 traces_list.traces_id.push_back(i);
                 traces_list.traces_points.push_back((points[1]-points[0]) - (points[3]-points[2]));
                 traces_list.traces_length.push_back(abs(traces_list.traces_points[i](0)-traces_list.traces_points[i](1)));
-                traces_list.traces_gen.push_back({i,j});
+                traces_list.traces_gen.push_back({i, j});
 
 
 
@@ -320,9 +321,8 @@ vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2)
 // Funzione che stampa le informazioni della traccia sul file di output
 bool Export_traces_Info(Traces& t)
 {
-    ostream of;
-    of.open("traces_info.csv");
-    if(!output_file.open)
+    ofstream of("traces_info.csv");
+    if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
         return false;
@@ -347,9 +347,8 @@ bool Export_traces_Info(Traces& t)
 // Funzione che stampa le informazioni della traccia sul file di output
 bool Export_traces_Type(Fractures& f,Traces& t)
 {
-    ostream of;
-    of.open("traces_type.csv");
-    if(!output_file.open)
+    ofstream of("traces_type.csv");
+    if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
         return false;
