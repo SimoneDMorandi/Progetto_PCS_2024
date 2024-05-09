@@ -11,7 +11,7 @@ using namespace Eigen;
 
 struct Fractures
 {
-    unsigned int N_frac; // Numero delle fratture
+    int N_frac; // Numero delle fratture
     vector<int> frac_id;
     vector<int> N_vert;
     vector<vector<vector<double>>> frac_vertices;  //Vector3d

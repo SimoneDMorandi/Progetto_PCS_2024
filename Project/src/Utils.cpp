@@ -5,7 +5,6 @@
 #include <sstream>
 #include <Eigen/Eigen>
 #include <Eigen/Dense>
-#include <Eigen/QR>
 #include <string>
 #include <vector>
 
@@ -100,12 +99,12 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     //vec<pair<int, double>> ns_notpass;
     // Prendo ogni singola frattura e calcolo il BoundBox
     // Boundbox è un vettore di due vettori di coordinate
-    for(unsigned int i = 0; i < fractures_list.N_frac - 1; i++)
+    for(int i = 0; i < fractures_list.N_frac - 1; i++)
     {
         vec2 Bbox_1 = Calculate_Bounding_Box(fractures_list.frac_vertices[i]);
 
         // Calcolo il secondo Bounding box, per ogni frattura successiva ad i
-        for(unsigned int j = i+1; ;j++)
+        for(int j = i+1; ;j++)
         {
             vec2 Bbox_2 = Calculate_Bounding_Box(fractures_list.frac_vertices[j]);
             // Verifico l'intersezione
@@ -147,15 +146,15 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
                     coeff.row(3) << pi2[0], pi2[1], pi2[2];
-
-                    Vector4d termineNoto;
-                    termineNoto[0] = -plane_1[3];
-                    termineNoto[1] = -plane_2[3];
-                    termineNoto[2] = -pi1[3];
-                    termineNoto[3] = -pi2[3];
-                    HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                    if (coeff.rank() == 3)
+                    FullPivLU<MatrixXd> lu_decomp(coeff);
+                    if (lu_decomp.rank() == 3)
                     {
+                        Vector4d termineNoto;
+                        termineNoto[0] = -plane_1[3];
+                        termineNoto[1] = -plane_2[3];
+                        termineNoto[2] = -pi1[3];
+                        termineNoto[3] = -pi2[3];
+                        HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
                         points.push_back(qr.solve(termineNoto));
                     }
                     else
@@ -186,15 +185,15 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
                     coeff.row(3) << pi2[0], pi2[1], pi2[2];
-
-                    Vector4d termineNoto;
-                    termineNoto[0] = -plane_1[3];
-                    termineNoto[1] = -plane_2[3];
-                    termineNoto[2] = -pi1[3];
-                    termineNoto[3] = -pi2[3];
-                    HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                    if (coeff.rank() == 3)
+                    FullPivLU<MatrixXd> lu_decomp(coeff);
+                    if (lu_decomp.rank() == 3)
                     {
+                        Vector4d termineNoto;
+                        termineNoto[0] = -plane_1[3];
+                        termineNoto[1] = -plane_2[3];
+                        termineNoto[2] = -pi1[3];
+                        termineNoto[3] = -pi2[3];
+                        HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
                         points.push_back(qr.solve(termineNoto));
                     }
                     else
@@ -204,16 +203,15 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 }
 
                 traces_list.traces_id.push_back(i);
-                traces_list.traces_points.push_back((points[1]-points[0]) - (points[3]-points[2]));
-                traces_list.traces_length.push_back(abs(traces_list.traces_points[i](0)-traces_list.traces_points[i](1)));
+                traces_list.traces_points.push_back({(points[1]-points[0]),(points[3]-points[2])});
+                //traces_list.traces_length.push_back(abs(traces_list.traces_points[i][0]-traces_list.traces_points[i][1]));
+
+                // OK
                 traces_list.traces_gen.push_back({i, j});
 
-
-
-
                 /* Dopo aver ricavato i punti di intersezione.*/
-                /* MANCA IL CONTROLLO DELLA TRACCIA DOPPIA
                 // CONTROLLO TRACCIA PASSANTE, NON PASSANTE
+                /*
                 unsigned int counter = 0;
                 for (auto & coord : polygon(i))
                 {
@@ -276,6 +274,7 @@ void equazioneRetta(const vector<double>& v1, const vector<double>& v2,
     pi2[3] = n[0]*v1[2] - n[2]*v1[0];
 }
 
+// Funzione che calcola il piano passante per un poligono
 vector<double> pianoFrattura(const vector<double>& v1, const vector<double>& v2, const vector<double>& v3)
 {
     vector<double> AB = sottrazione(v1, v2);
@@ -290,6 +289,7 @@ vector<double> pianoFrattura(const vector<double>& v1, const vector<double>& v2,
 }
 
 
+// Funzione di prodotto vettoriale da eliminare
 vector<double> crossProduct(const vector<double>& u, const vector<double>& v) {
     vector<double> w(3);
     w[0] = u[1] * v[2] - u[2] * v[1];
@@ -298,6 +298,7 @@ vector<double> crossProduct(const vector<double>& u, const vector<double>& v) {
     return w;
 }
 
+// Funzione di prodotto scalare da eliminare
 double dotProduct(const vector<double>& v1, const vector<double>& v2)
 {
     double ris = 0;
@@ -307,6 +308,7 @@ double dotProduct(const vector<double>& v1, const vector<double>& v2)
     return ris;
 }
 
+// Funzione di sottraziojne vettoriale da eliminare
 vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2)
 {
     vector<double> ris(3);
@@ -364,7 +366,7 @@ bool Export_traces_Type(Fractures& f,Traces& t)
 }
 ////////////////////////////////
 
-// Funzione che calcola il Bounding Box, date le coordinate di un poligono.
+// Funzione che calcola il Bounding Box, date le coordinate di un poligono. OK
 vector<vector<double>> Calculate_Bounding_Box(vector<vector<double>>& polygon)
 {
     // Inizializzo le coordinate del punto massimo e minimo, la prima colonna contiene il punto minimo
