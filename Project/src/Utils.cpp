@@ -48,7 +48,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
         for(unsigned int k = 0; k < 3; k++)
         {
             getline(file, line);
-            fractures_list.frac_vertices[i].reserve(numVertices);
+            fractures_list.frac_vertices[i].resize(numVertices);
 
             istringstream converter(line);
             for(unsigned int j = 0; j < numVertices; j++)
@@ -59,13 +59,14 @@ bool importFractures(const string& path, Fractures &fractures_list)
             }
         }
     }
+
     file.close();
 
     // INIZIO STAMPA, NON RICHIESTA MA UTILE PER TEST
     vec3 v_transposed(fractures_list.N_frac, vec2(fractures_list.N_vert.size(), vector<double>(3)));
 
     // Effettua la trasposizione
-    for (unsigned int i = 0; i < fractures_list.N_frac; i++)
+    for ( int i = 0; i < fractures_list.N_frac; i++)
         for (unsigned int k = 0; k < 3; k++)
             for (int j = 0; j < fractures_list.N_vert[i]; j++)
                 v_transposed[i][j][k] = fractures_list.frac_vertices[i][k][j];
@@ -74,7 +75,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
     //vec3 fractures_lists = v_transposed;
 
     // Stampa dati
-    for(unsigned int i = 0; i < fractures_list.N_frac; i++)
+    for( int i = 0; i < fractures_list.N_frac; i++)
     {
         cout << "Id frattura: \t"<< i << endl;
         for( int j = 0; j < fractures_list.N_vert[i]; j++)
@@ -84,7 +85,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
             cout << endl;
         }
         cout << endl;
-    }\
+    }
         return true;
 }
 
@@ -141,7 +142,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1], pi1,pi2);
                     }
 
-                    Matrix<double, 4, 3> coeff;   //CAMBIARE COL NUMERO GENERALE
+
+                    Matrix<double, fractures_list.N-vert[i], 3> coeff;   //CAMBIARE COL NUMERO GENERALE
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
@@ -154,8 +156,13 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[1] = -plane_2[3];
                         termineNoto[2] = -pi1[3];
                         termineNoto[3] = -pi2[3];
-                        HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                        points.push_back(qr.solve(termineNoto));
+                        HouseholderQR<Matrix<double, fractures_list.N-vert[i], 3>> qr(coeff);
+                        // ordino [A,C]
+                        if(points[1] - points[0] < epsilon)
+                        {
+                            points[1] = points[0];
+                            points[0] = qr.solve(termineNoto);
+                        }
                     }
                     else
                     {
@@ -180,7 +187,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     }
 
                     // Intersezione tra i 3 piani
-                    Matrix<double, 4, 3> coeff;
+                    Matrix<double, fractures_list.N-vert[j], 3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
@@ -193,8 +200,14 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[1] = -plane_2[3];
                         termineNoto[2] = -pi1[3];
                         termineNoto[3] = -pi2[3];
-                        HouseholderQR<Matrix<double, 4, 3>> qr(coeff);
-                        points.push_back(qr.solve(termineNoto));
+                        HouseholderQR<Matrix<double, fractures_list.N-vert[j], 3>> qr(coeff);
+
+                        // ordino [B,D]
+                        if(points[3] - points[2] < epsilon)
+                        {
+                            points[3] = points[2];
+                            points[2] = qr.solve(termineNoto);
+                        }
                     }
                     else
                     {
@@ -203,10 +216,17 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 }
 
                 traces_list.traces_id.push_back(i);
-                traces_list.traces_points.push_back({(points[1]-points[0]),(points[3]-points[2])});
-                //traces_list.traces_length.push_back(abs(traces_list.traces_points[i][0]-traces_list.traces_points[i][1]));
 
-                // OK
+                // Calcolo del segmento corrispondente alla traccia, avendo i 4 punti ordinati [A,C//B,D]
+
+                /* Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti al poligono
+                1 e gli altri al poligono 2, se calcolo il massimo tra gli inizi trovo l'inizio della traccia
+                 e calcolando il minimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
+                Vector3d start = points[0].array().max(points[2].array());
+                Vector3d finish = points[1].array().min(points[3].array());
+
+                traces_list.traces_points.push_back({start, finish});
+                traces_list.traces_length.push_back((traces_list.traces_points[i][1]-traces_list.traces_points[0]).lpNorm<1>());
                 traces_list.traces_gen.push_back({i, j});
 
                 /* Dopo aver ricavato i punti di intersezione.*/
