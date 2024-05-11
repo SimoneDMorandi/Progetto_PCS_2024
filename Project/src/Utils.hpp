@@ -33,3 +33,6 @@ vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2);
 
 // Funzione che calcola il Bounding Box, date le coordinate di un poligono.
 vector<vector<double>> Calculate_Bounding_Box(vector<vector<double>>& polygon);
+
+// Funzione di ordinamento della struttura salvavita.
+bool Sort_Traces_Type(Fractures&fractures_list);

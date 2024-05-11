@@ -32,6 +32,9 @@ int main()
     }
     cout << "Tracce esportate correttamente." << endl;
 
+    // Ordinamento della struttura salvavita.
+    Sort_Traces_Type(fractures_list);
+
     bool result_type = Export_traces_Type(fractures_list,traces_list);
     if(!result_type)
     {
