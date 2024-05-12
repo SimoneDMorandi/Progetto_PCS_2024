@@ -230,15 +230,15 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 traces_list.traces_gen.push_back({i, j});
 
                 // Aggiungo l'id della frattura all'elenco di fratture per ogni poligono
-                fractures_list.trace_type[i][0].push_back(i);
-                fractures_list.trace_type[j][0].push_back(i);
+                fractures_list.trace_type[i].first.push_back(i);
+                fractures_list.trace_type[j].first.push_back(i);
 
                 // CONTROLLO TRACCIA PASSANTE, NON PASSANTE
 
                 for(int i = 0; i < fractures_list.trace_type.size(); i++) // Corrisponde alla posizione del poligono in Fractures
                 {
                     unsigned int counter = 0; // Assumo in partenza che sia non passante, caso più probabile.
-                    for(auto& trace_id : fractures_list.trace_type[i][0])
+                    for(auto& trace_id : fractures_list.trace_type[i].first)
                     {
                         // Calcolo l'equazione della retta passante per la traccia
                         vector<double> pi1_trace(4);
@@ -283,12 +283,12 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         if(counter == 2)
                         {
                             // Salvo nella struttura salvavita
-                            fractures_list.trace_type[i][1].push_back(0); // Traccia passante
+                            fractures_list.trace_type[i].second.push_back(0); // Traccia passante
                         }
                         else
                         {
                             // Salvo nella struttura salvavita
-                            fractures_list.trace_type[i][1].push_back(1); // Traccia non passante
+                            fractures_list.trace_type[i].second.push_back(1); // Traccia non passante
                         }
 
                     }
@@ -369,7 +369,7 @@ vector<double> sottrazione(const vector<double>& v1, const vector<double>& v2)
 // Funzione che stampa le informazioni della traccia sul file di output
 bool Export_traces_Info(Traces& t)
 {
-    ofstream of("traces_info.csv");
+    ofstream of("traces_info.txt");
     if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
@@ -395,7 +395,7 @@ bool Export_traces_Info(Traces& t)
 // Funzione che stampa le informazioni della traccia sul file di output
 bool Export_traces_Type(Fractures& f,Traces& t)
 {
-    ofstream of("traces_type.csv");
+    ofstream of("traces_type.txt");
     if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
@@ -404,8 +404,13 @@ bool Export_traces_Type(Fractures& f,Traces& t)
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
         of << "# FractureId1; NumTraces \n";
-        of << f.frac_id[i] << ";" << f.N_traces[i] % 2 << "\n";
+        of << f.frac_id[i] << ";" << f.trace_type[i].first.size() << "\n";
         cout << "# TraceId; Tips; Length" << "\n";
+        for(unsigned int j = 0; j < f.trace_type[i].first.size(); j++)
+        {
+            cout << f.trace_type[i].first[j] << ";" << f.trace_type[i].second[j]
+                 << ";" << t.traces_length[f.trace_type[i].first[j]] <<  "\n";
+        }
     }
     of.close();
     return true;
@@ -436,7 +441,33 @@ vector<vector<double>> Calculate_Bounding_Box(vector<vector<double>>& polygon)
 
 
 // Funzione di ordinamento della struttura salvavita.
-bool Sort_Traces_Type(Fractures& fractures_list)
+bool Sort_Traces_Type(Fractures& f, Traces &t)
 {
+    // Ordinamento secondo tips
+    for(auto pair : f.trace_type)
+    {
+        // Mergesort su pair.second
+        // Quando modifico le posizioni, faccio la stessa cosa per pair.first[i] con pair.first[j]
 
+        VectorXd temporary_length;
+        unsigned int i = 0, change = 0;
+        bool flag = false;
+        // Ordinamento secondo length
+        for(auto id : pair.first)
+        {
+            // Riempio un vettore che contiene le lunghezze corrispondenti alle tracce e salvo quando
+            // le tracce iniziano ad essere passanti
+            temporary_length(i) = t.traces_length[id];
+            if(pair.second[i] != 0 && !flag)
+            {
+                change = i;
+                flag = true;
+            }
+            i++;
+        }
+        // Applico Mergesort a temporary_length FINO A CHANGE scambiando gli elementi di pair.first
+        // non è necessario scambiare gli elementi di pari.second perché sono tutti 0
+        // faccio poi la stessa cosa con temporary_lenght DA CHANGE fino alla fine.
+    }
+    return true;
 }
