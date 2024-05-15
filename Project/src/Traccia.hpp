@@ -17,7 +17,7 @@ struct Fractures
     vector<int> N_vert;
     vector<vector<vector<double>>> frac_vertices;  //Vector3d
     vector<int> N_traces;
-    vector<pairs<vector<int>,vector<int>>> trace_type; // struttura salvavita
+    vector<pair<vector<int>,vector<int>>> trace_type; // struttura salvavita
 };
 // Definisco la struttura che contiene le informazioni della traccia
 struct Traces
