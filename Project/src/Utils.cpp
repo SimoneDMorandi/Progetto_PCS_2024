@@ -59,7 +59,6 @@ bool importFractures(const string& path, Fractures &fractures_list)
             }
         }
     }
-
     file.close();
 
     // INIZIO STAMPA, NON RICHIESTA MA UTILE PER TEST
@@ -120,7 +119,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 
                 vector<double> plane_2 = pianoFrattura(fractures_list.frac_vertices[j][0], fractures_list.frac_vertices[j][1],
                                                         fractures_list.frac_vertices[j][2]);
-
 
                 vector<Vector3d> points;
                 points.reserve(4);
@@ -222,7 +220,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                  e calcolando il minimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
                 Vector3d start = points[0].array().max(points[2].array());
                 Vector3d finish = points[1].array().min(points[3].array());
-
 
                 // Completo la struttura TRACES e la parte di struttura 'salvavita'
                 traces_list.traces_points.push_back({start, finish});
@@ -466,7 +463,7 @@ bool Sort_Traces_Type(Fractures& f, Traces &t)
             i++;
         }
         // Applico Mergesort a temporary_length FINO A CHANGE scambiando gli elementi di pair.first
-        // non è necessario scambiare gli elementi di pari.second perché sono tutti 0
+        // non è necessario scambiare gli elementi di pair.second perché sono tutti 0
         // faccio poi la stessa cosa con temporary_lenght DA CHANGE fino alla fine.
     }
     return true;
