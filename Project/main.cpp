@@ -16,8 +16,8 @@ int main()
     // Definizione del contenitore delle fratture e lettura del file con stampa.
     Fractures fractures_list;
     Traces traces_list;
-    //string path = "C:/Users/simod/Dropbox (Politecnico Di Torino Studenti)/PC/Desktop/Progetto_PCS_2024/Project/DATA/FR3_data.txt";
-    string path = "C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Project/DATA/FR3_data.txt";
+    string path = "./DATA/FR3_data.txt";
+    //string path = "C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Project/DATA/FR3_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return false;

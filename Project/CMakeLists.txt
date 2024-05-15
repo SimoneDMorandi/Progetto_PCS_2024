@@ -44,6 +44,10 @@ list(APPEND DFN_SOURCES ${DFN_sources})
 list(APPEND DFN_HEADERS ${DFN_headers})
 list(APPEND DFN_INCLUDE ${DFN_includes})
 
+# File
+###############################################################################
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/DATA DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
 # Create executable
 ################################################################################
 add_executable(${PROJECT_NAME}

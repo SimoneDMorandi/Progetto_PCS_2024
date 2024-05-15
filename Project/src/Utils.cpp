@@ -7,86 +7,12 @@
 #include <Eigen/Dense>
 #include <string>
 #include <vector>
+#include <utility>
 
 using namespace std;
 using namespace Eigen;
 using vec2 = vector<vector<double>>;
 using vec3 = vector<vector<vector<double>>>;
-
-/*bool importFractures(const string& path, Fractures &fractures_list)
-{
-    ifstream file;
-    file.open(path);
-
-    if(file.fail())
-        return false;
-
-    string line;
-    getline(file, line);
-
-    getline(file, line);  // Aggiungo il numero delle fratture
-    fractures_list.N_frac = stoi(line);
-
-    unsigned int idFrac = 0;
-    char delimiter = ';';
-    size_t numVertices = 0;
-
-    fractures_list.frac_vertices.resize(fractures_list.N_frac);
-
-    for(unsigned int i = 0; i < fractures_list.N_frac; i++) // per ogni frattura salvo le coordinate dei vertici
-    {
-        getline(file, line);
-        getline(file, line);
-
-        istringstream converter(line);
-        converter >> idFrac >> delimiter >> numVertices;
-        fractures_list.frac_id.push_back(idFrac);
-        fractures_list.N_vert.push_back(numVertices);
-
-        getline(file, line);
-
-        for(unsigned int k = 0; k < 3; k++)
-        {
-            getline(file, line);
-            fractures_list.frac_vertices[i].resize(numVertices);
-
-            istringstream converter(line);
-            for(unsigned int j = 0; j < numVertices; j++)
-            {
-                double val;
-                converter >> val >> delimiter;
-                fractures_list.frac_vertices[i][k].push_back(val);
-            }
-        }
-    }
-    file.close();
-
-    // INIZIO STAMPA, NON RICHIESTA MA UTILE PER TEST
-    vec3 v_transposed(fractures_list.N_frac, vec2(fractures_list.N_vert.size(), vector<double>(3)));
-
-    // Effettua la trasposizione
-    for ( int i = 0; i < fractures_list.N_frac; i++)
-        for (unsigned int k = 0; k < 3; k++)
-            for (int j = 0; j < fractures_list.N_vert[i]; j++)
-                v_transposed[i][j][k] = fractures_list.frac_vertices[i][k][j];
-
-    // QUI COPIO, SI PUO' OTTIMIZZARE
-    //vec3 fractures_lists = v_transposed;
-
-    // Stampa dati
-    for( int i = 0; i < fractures_list.N_frac; i++)
-    {
-        cout << "Id frattura: \t"<< i << endl;
-        for( int j = 0; j < fractures_list.N_vert[i]; j++)
-        {
-            for(unsigned int k = 0; k < 3; k++)
-                cout << v_transposed[i][j][k] << "\t";
-            cout << endl;
-        }
-        cout << endl;
-    }
-        return true;
-}*/
 
 bool importFractures(const string& path, Fractures &fractures_list)
 {
@@ -181,6 +107,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 {
     // n è la dimensione letta nel file di avvio, al più tutto si interseca e ho n/2 tracce
     traces_list.traces_id.reserve(fractures_list.N_frac);
+    fractures_list.trace_type.reserve(fractures_list.N_frac);
     double epsilon = numeric_limits<decltype(epsilon)>::epsilon();
     // Prendo ogni singola frattura e calcolo il BoundBox
     // Boundbox è un vettore di due vettori di coordinate
@@ -208,7 +135,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                                         fractures_list.frac_vertices[j][2]);
 
                 vector<Vector3d> points;
-                points.reserve(4);
+                unsigned int count = 0;
+                points.resize(2);
 
                 // Ricavo segmento del poligono 1
                 for (unsigned int k = 0; k < fractures_list.frac_vertices[i].size(); k++)
@@ -227,7 +155,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 
 
                     //Matrix<double, fractures_list.N_vert[i], 3> coeff;
-                    MatrixXd coeff;
+                    Matrix<double,4,3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
@@ -240,23 +168,26 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[1] = -plane_2[3];
                         termineNoto[2] = -pi1[3];
                         termineNoto[3] = -pi2[3];
-                        //HouseholderQR<Matrix<double, fractures_list.N_vert[i], 3>> qr(coeff);
                         HouseholderQR<MatrixXd> qr(coeff);
                         // ordino [A,C]
-                        //if(points[1] - points[0] < epsilon)
-                        // Calcola la norma delle differenze tra le matrici
-                        if ((points[1] - points[0]).norm() < epsilon)
+                        /*if(count != 0 && (qr.solve(termineNoto) - points[count-1]).norm() < epsilon)
                         {
-                            points[1] = points[0];
-                            points[0] = qr.solve(termineNoto);
-                        }
+                            Vector3d var = points[count-1];
+                            points[count] = var;
+                            points[count-1] = qr.solve(termineNoto);
+                            count++;
+                            cout << count << endl;
+                            continue;
+                        }*/
+                        points[count] = qr.solve(termineNoto);
+                        count++;
+                        cout << count << endl;
                     }
                     else
                     {
                         continue;
                     }
                 }
-
                 // Ricavo segmento del poligono 2
                 for (unsigned int k = 0; k < fractures_list.frac_vertices[j].size(); k++)
                 {
@@ -275,7 +206,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 
                     // Intersezione tra i 3 piani
                     //Matrix<double, fractures_list.N_vert[j], 3> coeff;
-                    MatrixXd coeff;
+                    Matrix<double,4,3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << pi1[0], pi1[1], pi1[2];
@@ -290,100 +221,123 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[3] = -pi2[3];
                         //HouseholderQR<Matrix<double, fractures_list.N_vert[j], 3>> qr(coeff);
                         HouseholderQR<MatrixXd> qr(coeff);
-
-                        // ordino [B,D]
-                        //if(points[3] - points[2] < epsilon)
-                        if ((points[1] - points[0]).norm() < epsilon)
+                        /*if(count != 2 && (qr.solve(termineNoto) - points[count-1]).norm() < epsilon)
                         {
-                            points[3] = points[2];
-                            points[2] = qr.solve(termineNoto);
-                        }
+                            Vector3d var = points[count-1];
+                            points[count] = var;
+                            points[count-1] = qr.solve(termineNoto);
+                            count++;
+                            cout << count << endl;
+                            continue;
+                        }*/
+                        points[count] = qr.solve(termineNoto);
+                        count++;
+                        cout << count << endl;
                     }
                     else
                     {
                         continue;
                     }
                 }
+                cout << "point:" << endl;
+                cout.precision(16);
+                cout << scientific << endl;
+                for(int l = 0; l < points.size(); l++)
+                {
+                    cout << points[l] << endl;
+                }
 
                 traces_list.traces_id.push_back(i);
 
-                // Calcolo del segmento corrispondente alla traccia, avendo i 4 punti ordinati [A,C//B,D]
+                 // Calcolo del segmento corrispondente alla traccia, avendo i 4 punti ordinati [A,C//B,D]
 
-                /* Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti al poligono
-                1 e gli altri al poligono 2, se calcolo il massimo tra gli inizi trovo l'inizio della traccia
-                 e calcolando il minimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
-                Vector3d start = points[0].array().max(points[2].array());
-                Vector3d finish = points[1].array().min(points[3].array());
+                 /* Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti al poligono
+                 1 e gli altri al poligono 2, se calcolo il massimo tra gli inizi trovo l'inizio della traccia
+                  e calcolando il minimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
+                Vector3d start;
+                Vector3d finish;
+                if(points.size() == 2)
+                {
+                    start = points[0];
+                    finish = points[1];
+
+                }
+                else
+                {
+                    start = points[0].array().max(points[2].array());
+                    finish = points[1].array().min(points[3].array());
+                }
 
                 // Completo la struttura TRACES e la parte di struttura 'salvavita'
-                traces_list.traces_points.push_back({start, finish});
-                traces_list.traces_length.push_back((traces_list.traces_points[i][1]-traces_list.traces_points[i][0]).lpNorm<1>());
-                traces_list.traces_gen.push_back({i, j});
+                 traces_list.traces_points.push_back({start, finish});
+                 traces_list.traces_length.push_back((traces_list.traces_points[i][1]-traces_list.traces_points[i][0]).lpNorm<1>());
+                 cout << i << ";" << j << endl;
+                 traces_list.traces_gen.push_back({i,j});
 
                 // Aggiungo l'id della frattura all'elenco di fratture per ogni poligono
-                fractures_list.trace_type[i].first.push_back(i);
-                fractures_list.trace_type[j].first.push_back(i);
+                // fractures_list.trace_type[i] = make_pair(traces_list.traces_id[i], 1); // some_double_value is just a placeholder, replace it with the appropriate value
+                // fractures_list.trace_type[j] = make_pair(traces_list.traces_id[i], 1);
 
-                // CONTROLLO TRACCIA PASSANTE, NON PASSANTE
+                // // CONTROLLO TRACCIA PASSANTE, NON PASSANTE
 
-                /*for(int i = 0; i < fractures_list.trace_type.size(); i++) // Corrisponde alla posizione del poligono in Fractures
-                {
-                    unsigned int counter = 0; // Assumo in partenza che sia non passante, caso più probabile.
-                    for(auto& trace_id : fractures_list.trace_type[i].first)
-                    {
-                        // Calcolo l'equazione della retta passante per la traccia
-                        vector<double> pi1_trace(4);
-                        vector<double> pi2_trace(4);
-                        equazioneRetta(traces_list.traces_points[trace_id][0],
-                                       traces_list.traces_points[trace_id][1], pi1_trace, pi2_trace);
+                // for(int i = 0; i < fractures_list.trace_type.size(); i++) // Corrisponde alla posizione del poligono in Fractures
+                // {
+                //     unsigned int counter = 0; // Assumo in partenza che sia non passante, caso più probabile.
+                //     for(auto& trace_id : fractures_list.trace_type[i].first)
+                //     {
+                //         // Calcolo l'equazione della retta passante per la traccia
+                //         vector<double> pi1_trace(4);
+                //         vector<double> pi2_trace(4);
+                //         equazioneRetta(traces_list.traces_points[trace_id][0],
+                //                        traces_list.traces_points[trace_id][1], pi1_trace, pi2_trace);
 
-                        // Calcolo l'equazioni delle rette del poligono e le confronto con la traccia
-                        for(j = 0; j < fractures_list.frac_vertices[i].size(); j++)
-                        {
-                            if(j < fractures_list.frac_vertices[i].size()-1)
-                            {
-                                vector<double> pi1_edge(4);
-                                vector<double> pi2_edge(4);
-                                equazioneRetta(fracture_list.frac_vertices[i][j],
-                                               traces_list.traces_points[trace_id][j+1], pi1_edge, pi2_edge);
+                //         // Calcolo l'equazioni delle rette del poligono e le confronto con la traccia
+                //         for(j = 0; j < fractures_list.frac_vertices[i].size(); j++)
+                //         {
+                //             if(j < fractures_list.frac_vertices[i].size()-1)
+                //             {
+                //                 vector<double> pi1_edge(4);
+                //                 vector<double> pi2_edge(4);
+                //                 equazioneRetta(fracture_list.frac_vertices[i][j],
+                //                                traces_list.traces_points[trace_id][j+1], pi1_edge, pi2_edge);
 
-                                // Metto a sistema le due rette, non credo vada bene la funzione di prima.
+                //                 // Metto a sistema le due rette, non credo vada bene la funzione di prima.
 
-                                //if(c'è soluzione)
-                                //{
-                                //counter ++
-                                //}
+                //                 //if(c'è soluzione)
+                //                 //{
+                //                 //counter ++
+                //                 //}
 
-                            }
-                            else
-                            {
-                                vector<double> pi1_edge(4);
-                                vector<double> pi2_edge(4);
-                                equazioneRetta(fracture_list.frac_vertices[i][j],
-                                               traces_list.traces_points[trace_id][0], pi1_edge, pi2_edge);
+                //             }
+                //             else
+                //             {
+                //                 vector<double> pi1_edge(4);
+                //                 vector<double> pi2_edge(4);
+                //                 equazioneRetta(fracture_list.frac_vertices[i][j],
+                //                                traces_list.traces_points[trace_id][0], pi1_edge, pi2_edge);
 
-                                // Metto a sistema le due rette, non credo vada bene la funzione di prima.
+                //                 // Metto a sistema le due rette, non credo vada bene la funzione di prima.
 
-                                //if(c'è soluzione)
-                                //{
-                                    //counter ++
-                                //}
-                            }
+                //                 //if(c'è soluzione)
+                //                 //{
+                //                     //counter ++
+                //                 //}
+                //             }
 
-                        }
-                        if(counter == 2)
-                        {
-                            // Salvo nella struttura salvavita
-                            fractures_list.trace_type[i].second.push_back(0); // Traccia passante
-                        }
-                        else
-                        {
-                            // Salvo nella struttura salvavita
-                            fractures_list.trace_type[i].second.push_back(1); // Traccia non passante
-                        }
+                //         }
+                //         if(counter == 2)
+                //         {
+                //             // Salvo nella struttura salvavita
+                //             fractures_list.trace_type[i].second.push_back(0); // Traccia passante
+                //         }
+                //         else
+                //         {
+                //             // Salvo nella struttura salvavita
+                //             fractures_list.trace_type[i].second.push_back(1); // Traccia non passante
+                //         }
 
-                    }
-                }*/
+                    // }
+                // }
                 // Struttura salvavita piena, bisogna però ordinarla, meglio farlo in un'altra funzione con mergesort.
             }
             // Fine processo calcolo traccia tra i e j
