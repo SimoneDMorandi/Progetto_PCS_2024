@@ -7,7 +7,6 @@
 #include <Eigen/Dense>
 #include <string>
 #include <vector>
-#include <utility>
 
 using namespace std;
 using namespace Eigen;
@@ -116,7 +115,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
         vec2 Bbox_1 = Calculate_Bounding_Box(fractures_list.frac_vertices[i]);
 
         // Calcolo il secondo Bounding box, per ogni frattura successiva ad i
-        for(int j = i+1; ;j++)
+        for(int j = i+1; j < fractures_list.N_frac  ;j++)
         {
             vec2 Bbox_2 = Calculate_Bounding_Box(fractures_list.frac_vertices[j]);
             // Verifico l'intersezione
@@ -136,7 +135,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 
                 vector<Vector3d> points;
                 unsigned int count = 0;
-                points.resize(2);
+                points.resize(4);
+
 
                 // Ricavo segmento del poligono 1
                 for (unsigned int k = 0; k < fractures_list.frac_vertices[i].size(); k++)
@@ -153,8 +153,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1], pi1,pi2);
                     }
 
-
-                    //Matrix<double, fractures_list.N_vert[i], 3> coeff;
                     Matrix<double,4,3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
@@ -170,18 +168,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[3] = -pi2[3];
                         HouseholderQR<MatrixXd> qr(coeff);
                         // ordino [A,C]
-                        /*if(count != 0 && (qr.solve(termineNoto) - points[count-1]).norm() < epsilon)
-                        {
-                            Vector3d var = points[count-1];
-                            points[count] = var;
-                            points[count-1] = qr.solve(termineNoto);
-                            count++;
-                            cout << count << endl;
-                            continue;
-                        }*/
                         points[count] = qr.solve(termineNoto);
                         count++;
-                        cout << count << endl;
                     }
                     else
                     {
@@ -205,7 +193,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     }
 
                     // Intersezione tra i 3 piani
-                    //Matrix<double, fractures_list.N_vert[j], 3> coeff;
                     Matrix<double,4,3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
@@ -219,60 +206,60 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[1] = -plane_2[3];
                         termineNoto[2] = -pi1[3];
                         termineNoto[3] = -pi2[3];
-                        //HouseholderQR<Matrix<double, fractures_list.N_vert[j], 3>> qr(coeff);
                         HouseholderQR<MatrixXd> qr(coeff);
-                        /*if(count != 2 && (qr.solve(termineNoto) - points[count-1]).norm() < epsilon)
-                        {
-                            Vector3d var = points[count-1];
-                            points[count] = var;
-                            points[count-1] = qr.solve(termineNoto);
-                            count++;
-                            cout << count << endl;
-                            continue;
-                        }*/
                         points[count] = qr.solve(termineNoto);
-                        count++;
-                        cout << count << endl;
+                        count++ ;
                     }
                     else
                     {
                         continue;
                     }
                 }
-                cout << "point:" << endl;
-                cout.precision(16);
-                cout << scientific << endl;
-                for(int l = 0; l < points.size(); l++)
+
+                // Caso di traccia passante per un poligono e non passante per l'altra
+                if(count == 2 && (points[1]-points[0]).lpNorm<1>() > epsilon)
                 {
-                    cout << points[l] << endl;
+                    // La traccia è passante per il primo poligono
+                    traces_list.traces_id.push_back(i);
+                    traces_list.traces_points.push_back({points[0], points[1]});
+                    traces_list.traces_length.push_back((points[1]-points[0]).lpNorm<1>());
+                    traces_list.traces_gen.push_back({i,j});
+
+                    cout << points[0] << endl;
+                    cout << endl;
+                    cout << points[1] << endl;
+                    cout << endl;
+                    // Da riempire la struttura salcavita con Tips = 1 per il poligono i e per j.
                 }
-
-                traces_list.traces_id.push_back(i);
-
-                 // Calcolo del segmento corrispondente alla traccia, avendo i 4 punti ordinati [A,C//B,D]
+                else if (count == 1)
+                {
+                    continue;
+                }
+                // Caso di traccia non passante per nessuno dei due poligoni
+                 // Calcolo del segmento corrispondente alla traccia, avendo i 4 punti [A,C//B,D]
 
                  /* Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti al poligono
                  1 e gli altri al poligono 2, se calcolo il massimo tra gli inizi trovo l'inizio della traccia
                   e calcolando il minimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
-                Vector3d start;
-                Vector3d finish;
-                if(points.size() == 2)
-                {
-                    start = points[0];
-                    finish = points[1];
-
-                }
                 else
                 {
-                    start = points[0].array().max(points[2].array());
-                    finish = points[1].array().min(points[3].array());
+                    Vector3d start;
+                    Vector3d finish;
+                    // Determino l'intersezione dei due segmenti trovati.
+                    start = points[0].array().min(points[2].array());
+                    finish = points[1].array().max(points[3].array());
+                    if((start-finish).lpNorm<1>() > epsilon)
+                    {
+                        // Completo la struttura TRACES e la parte di struttura 'salvavita' già con tips = 1??
+                         traces_list.traces_points.push_back({start, finish});
+                         traces_list.traces_length.push_back((finish-start).lpNorm<1>());
+                         traces_list.traces_gen.push_back({i,j});
+                         cout << start << endl;
+                         cout << endl;
+                         cout << finish << endl;
+                         cout << endl;
+                    }
                 }
-
-                // Completo la struttura TRACES e la parte di struttura 'salvavita'
-                 traces_list.traces_points.push_back({start, finish});
-                 traces_list.traces_length.push_back((traces_list.traces_points[i][1]-traces_list.traces_points[i][0]).lpNorm<1>());
-                 cout << i << ";" << j << endl;
-                 traces_list.traces_gen.push_back({i,j});
 
                 // Aggiungo l'id della frattura all'elenco di fratture per ogni poligono
                 // fractures_list.trace_type[i] = make_pair(traces_list.traces_id[i], 1); // some_double_value is just a placeholder, replace it with the appropriate value
