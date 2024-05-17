@@ -83,7 +83,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
     file.close();
 
 
-    /* Stampa dati
+    /*  TEST Stampa dati
     for(int i = 0; i < fractures_list.N_frac; i++)
     {
         cout << "Id frattura: \t"<< i << endl;
@@ -103,11 +103,16 @@ bool importFractures(const string& path, Fractures &fractures_list)
 
 void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 {
-    // n è la dimensione letta nel file di avvio, al più tutto si interseca e ho (n^2)/2 tracce.
-    traces_list.traces_id.reserve(fractures_list.N_frac*fractures_list.N_frac);
+    // N_frac è la dimensione letta nel file di avvio, al più tutto si interseca e ho (N_frac^2)/2 tracce.
+    unsigned int max_N = (fractures_list.N_frac*fractures_list.N_frac)/2;
+    traces_list.traces_id.reserve(max_N);
+    traces_list.traces_gen.reserve(max_N);
+    traces_list.traces_points.reserve(max_N);
+    traces_list.traces_length.reserve(max_N);
 
     // Definisco la precisione di macchina
     double eps = numeric_limits<decltype(eps)>::epsilon();
+
     // Prendo ogni singola frattura e calcolo il Bounding Box.
     for(unsigned int i = 0; i < fractures_list.N_frac - 1 ; i++)
     {
@@ -219,17 +224,35 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 // Caso di traccia passante per la prima e per la seconda frattura.
                 if(count == 2 && (points[1]-points[0]).lpNorm<1>() > eps)
                 {
+                    // Completo la struttura TRACES.
                     traces_list.traces_id.push_back(j-1);
                     traces_list.traces_points.push_back({points[0], points[1]});
                     traces_list.traces_length.push_back((points[1]-points[0]).lpNorm<1>());
                     traces_list.traces_gen.push_back({i,j});
-                    // Rimpimento struttura salvavita
-                    // creare un metodo che aggiunge id traccia e tips alla pair corrispondente
-                    cout << "Frattura passante per entrambi" <<traces_list.traces_id[i]<<  endl;
-                    cout << points[0] << endl;
-                    cout << endl;
-                    cout << points[1] << endl;
-                    cout << endl;
+                    // Completo la struttura FRACTURES salvavita per la prima frattura.
+                    auto it_1 = fractures_list.trace_type.find(i);
+                    if(it_1 != fractures_list.trace_type.end())
+                    {
+                        it_1->second.first.push_back(traces_list.traces_id[i]);
+                        it_1->second.second.push_back(1);
+                    }
+                    else
+                    {
+                        fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
+                        fractures_list.trace_type[i].second.push_back(1);
+                    }
+                    auto it_2 = fractures_list.trace_type.find(j);
+                    // Completo la struttura FRACTURES per la seconda frattura.
+                    if(it_2 != fractures_list.trace_type.end())
+                    {
+                        it_2->second.first.push_back(traces_list.traces_id[i]);
+                        it_2->second.second.push_back(1);
+                    }
+                    else
+                    {
+                        fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
+                        fractures_list.trace_type[i].second.push_back(1);
+                    }
                 }
 
                 // Caso in cui la traccia è solo un punto, non lo considero.
@@ -252,18 +275,14 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     if((start-finish).lpNorm<1>() > eps)
                     {
                         // Completo la struttura TRACES
-                         traces_list.traces_points.push_back({start, finish});
-                         traces_list.traces_length.push_back((finish-start).lpNorm<1>());
-                         traces_list.traces_gen.push_back({i,j});
-                         cout << "Frattura" << endl;
-                         cout << start << endl;
-                         cout << endl;
-                         cout << finish << endl;
-                         cout << endl;
+                        traces_list.traces_id.push_back(j-1);
+                        traces_list.traces_points.push_back({start, finish});
+                        traces_list.traces_length.push_back((finish-start).lpNorm<1>());
+                        traces_list.traces_gen.push_back({i,j});
 
                         // Controllo se la frattura è passante per almeno una frattura.
                         // ...
-                        // Completo la struttura salvavita.
+                        // Completo la struttura salvavita come da sopra, ma tips = 0.
                     }
                 }
                 // Fine classificazione della traccia.
@@ -273,6 +292,25 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
         // Fine scorrimento fratture successive ad i.
     }
     // Fine scorrimento elenco fratture.
+
+    // Test stampa struttura salvavita
+    for (const auto& pair : fractures_list.trace_type)
+    {
+        std::cout << "Key: " << pair.first << std::endl;
+        std::cout << "Value 1: ";
+        for (int val : pair.second.first)
+        {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "Value 2: ";
+        for (int val : pair.second.second)
+        {
+            std::cout << val << " ";
+        }
+        std::cout << std::endl;
+    }
 }
 
 ////////////////////////////////////////////////////////////////
@@ -323,24 +361,24 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)
 {
-    ofstream of("traces_info.txt");
+    /*ofstream of("traces_info.txt");
     if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
         return false;
-    }
-    of << "# Number of Traces" << "\n";
-    of << t.traces_id.size() << "\n";
+    }*/
+    cout << "# Number of Traces" << "\n";
+    cout << t.traces_id.size() << "\n";
+    cout << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
-        of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
-        of << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
-        for(auto& coord : t.traces_points)
+        cout << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
+        for(auto& coord : t.traces_points[i])
         {
-            of << coord[0](0) << ";" << coord[0](1) << ";" << coord[0](2) << "\n";
+            cout << coord[0] << ";" << coord[1] << ";" << coord[2] << endl;
         }
     }
-    of.close();
+    /*of.close();*/
     return true;
 }
 

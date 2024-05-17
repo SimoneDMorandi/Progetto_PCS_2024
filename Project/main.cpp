@@ -32,7 +32,7 @@ int main()
     // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
 
-    /* Esportazione tracce.
+    // Esportazione tracce.
     bool result_info =  Export_traces_Info(traces_list);
     if(!result_info)
     {
@@ -40,7 +40,7 @@ int main()
     }
     cout << "Tracce esportate correttamente." << endl;
 
-    // Ordinamento della struttura salvavita E DELLA LUNGHEZZA
+    /* Ordinamento della struttura salvavita E DELLA LUNGHEZZA
     Sort_Traces_Type(fractures_list, traces_list);
 
     bool result_type = Export_traces_Type(fractures_list,traces_list);

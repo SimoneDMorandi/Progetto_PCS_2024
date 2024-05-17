@@ -28,7 +28,5 @@ struct Traces
     vector<unsigned int> traces_id;
     vector<vector<unsigned int>> traces_gen; // generatori della traccia
     vector<vector<Vector3d>> traces_points;
-    vector<pair<int,double>> pass;
-    vector<pair<int,double>> not_pass;
     vector<double> traces_length;
 };
