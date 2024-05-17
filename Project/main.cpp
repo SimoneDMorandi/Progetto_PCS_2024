@@ -9,29 +9,30 @@
 
 using namespace std;
 using namespace Eigen;
-using vec3 = vector<vector<vector<double>>>;
+using vec3 = vector<vector<Vector3d>>;
 
 int main()
 {
-    // Definizione del contenitore delle fratture e lettura del file con stampa.
+    // Definizione del contenitore delle fratture e delle tracce.
     Fractures fractures_list;
     Traces traces_list;
-    string path = "./DATA/FR82_data.txt";
-    //string path = "C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Project/DATA/FR3_data.txt";
 
+    // Impostazione precisione dei dati in uscita.
     cout.precision(16);
     cout << scientific << endl;
+
+    // Lettura del file.
+    string path = "./DATA/FR3_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
-        return false;
+        return 1;
     }
-    else
-    {
-        cout << "Import effettuato con successo." << endl;
-    }
+    cout << "Fratture importate correttamente." << endl;
 
+    // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
-    /*
+
+    /* Esportazione tracce.
     bool result_info =  Export_traces_Info(traces_list);
     if(!result_info)
     {
@@ -46,8 +47,7 @@ int main()
     if(!result_type)
     {
         return 1;
-    }
-    cout << "Tipologia di tracce esportate correttamente." << endl; */
+    } */
     return 0;
 }
 
