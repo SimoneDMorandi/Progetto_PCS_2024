@@ -1,0 +1,10 @@
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/CMakeFiles/DFN.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/CMakeFiles/DFN_TEST.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/CMakeFiles/edit_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/CMakeFiles/rebuild_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/src/CMakeFiles/edit_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/src/CMakeFiles/rebuild_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/TestingParaview/Code/src/CMakeFiles/edit_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/TestingParaview/Code/src/CMakeFiles/rebuild_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/src_test/CMakeFiles/edit_cache.dir
+C:/Users/ASUS/Desktop/esercitazioni/Progetto_PCS_2024/Debug/src_test/CMakeFiles/rebuild_cache.dir
