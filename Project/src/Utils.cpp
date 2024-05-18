@@ -110,6 +110,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     traces_list.traces_points.reserve(max_N);
     traces_list.traces_length.reserve(max_N);
 
+    // Utility per id tracce
+    unsigned int count_traces = 0;
     // Definisco la precisione di macchina
     double eps = numeric_limits<decltype(eps)>::epsilon();
 
@@ -185,10 +187,10 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     }
                 }
                 // Ricavo segmento della frattura 2: intersezione tra la retta contenente la traccia e due suoi lati.
-                for (unsigned int k = 0; k < fractures_list.N_vert[k]; k++)
+                for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
                 {
                     pair<Vector4d, Vector4d> planes;
-                    if(k == fractures_list.frac_vertices[i].size() -1)
+                    if(k == fractures_list.frac_vertices[j].size() -1)
                     {
                         planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
                     }
@@ -225,34 +227,16 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 if(count == 2 && (points[1]-points[0]).lpNorm<1>() > eps)
                 {
                     // Completo la struttura TRACES.
-                    traces_list.traces_id.push_back(j-1);
+                    traces_list.traces_id.push_back(count_traces);
+                    count_traces++;
                     traces_list.traces_points.push_back({points[0], points[1]});
                     traces_list.traces_length.push_back((points[1]-points[0]).lpNorm<1>());
                     traces_list.traces_gen.push_back({i,j});
-                    // Completo la struttura FRACTURES salvavita per la prima frattura.
-                    auto it_1 = fractures_list.trace_type.find(i);
-                    if(it_1 != fractures_list.trace_type.end())
-                    {
-                        it_1->second.first.push_back(traces_list.traces_id[i]);
-                        it_1->second.second.push_back(1);
-                    }
-                    else
-                    {
-                        fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
-                        fractures_list.trace_type[i].second.push_back(1);
-                    }
-                    auto it_2 = fractures_list.trace_type.find(j);
-                    // Completo la struttura FRACTURES per la seconda frattura.
-                    if(it_2 != fractures_list.trace_type.end())
-                    {
-                        it_2->second.first.push_back(traces_list.traces_id[i]);
-                        it_2->second.second.push_back(1);
-                    }
-                    else
-                    {
-                        fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
-                        fractures_list.trace_type[i].second.push_back(1);
-                    }
+                    // Completo la struttura FRACTURES salvavita per entrambe le fratture.
+                    fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[i].second.push_back(0);
+                    fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[j].second.push_back(0);
                 }
 
                 // Caso in cui la traccia è solo un punto, non lo considero.
@@ -275,14 +259,84 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     if((start-finish).lpNorm<1>() > eps)
                     {
                         // Completo la struttura TRACES
-                        traces_list.traces_id.push_back(j-1);
+                        traces_list.traces_id.push_back(count_traces);
                         traces_list.traces_points.push_back({start, finish});
                         traces_list.traces_length.push_back((finish-start).lpNorm<1>());
                         traces_list.traces_gen.push_back({i,j});
 
-                        // Controllo se la frattura è passante per almeno una frattura.
-                        // ...
-                        // Completo la struttura salvavita come da sopra, ma tips = 0.
+                        // Controllo se la traccia è passante per almeno una frattura.
+                        // Prima frattura
+                        unsigned int count_pass = 0;
+                        for (unsigned int k = 0; k < fractures_list.N_vert[i]; k++)
+                        {
+                            pair<Vector4d, Vector4d> planes;
+                            if(k == fractures_list.frac_vertices[i].size() -1)
+                            {
+                                planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                            }
+                            else{
+
+                                planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                            }
+
+                            if(check_pass(planes.first,planes.second,start,eps))
+                            {
+                                count_pass ++;
+                            }
+                            if(check_pass(planes.first,planes.second,finish,eps))
+                            {
+                                count_pass ++;
+                            }
+                        }
+                        if(count_pass == 2) // Caso di traccia passante per il primo poligono e non per il secondo
+                        {
+                            fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
+                            count_traces++;
+                            fractures_list.trace_type[i].second.push_back(0);
+                            fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                            fractures_list.trace_type[j].second.push_back(1);
+                        }
+                        else  // Caso di traccia non passante per il primo ma forse per il secondo
+                        {
+                            // Riempio Fractures per il poligono i
+                            fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
+                            fractures_list.trace_type[i].second.push_back(1);
+
+                            // Controllo se passante per j
+                            count_pass = 0;
+                            for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
+                            {
+                                pair<Vector4d, Vector4d> planes;
+                                if(k == fractures_list.frac_vertices[j].size() -1)
+                                {
+                                    planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
+                                }
+                                else{
+
+                                    planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
+                                }
+                                if(check_pass(planes.first,planes.second,start,eps))
+                                {
+                                    count_pass ++;
+                                }
+                                if(check_pass(planes.first,planes.second,finish,eps))
+                                {
+                                    count_pass ++;
+                                }
+                            }
+                            if(count_pass == 2) // Caso di traccia passante per j
+                            {
+                                fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
+                                count_traces++;
+                                fractures_list.trace_type[j].second.push_back(0);
+                            }
+                            else // Caso di traccia non passante per j
+                            {
+                                fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
+                                count_traces++;
+                                fractures_list.trace_type[j].second.push_back(1);
+                            }
+                        }
                     }
                 }
                 // Fine classificazione della traccia.
@@ -296,21 +350,28 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     // Test stampa struttura salvavita
     for (const auto& pair : fractures_list.trace_type)
     {
-        std::cout << "Key: " << pair.first << std::endl;
-        std::cout << "Value 1: ";
-        for (int val : pair.second.first)
+        cout << "Key: " << pair.first << endl;
+        cout << "Id traccia: ";
+        for (unsigned int val : pair.second.first)
         {
-            std::cout << val << " ";
+            cout << val << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
 
-        std::cout << "Value 2: ";
+        cout << "Tips:";
         for (int val : pair.second.second)
         {
-            std::cout << val << " ";
+            cout << val << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
+        cout << endl;
     }
+    /* Test stampa lunghezza OK
+    cout << "Lunghezze" << endl;
+    for ( const auto& length : traces_list.traces_length)
+    {
+        cout << length << endl;
+    }*/
 }
 
 ////////////////////////////////////////////////////////////////
@@ -357,6 +418,24 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 }
 
 /////////////////////////////////
+
+// Funzione che verifica se una traccia è passante per una frattura.
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double eps)
+{
+    // Assumo che sia non passante in principio, caso più probabile;
+    Matrix<double,2,3> A;
+    A << pi1.head<3>().transpose(), pi2.head<3>().transpose();
+    Vector2d d;
+    d << pi1[3], pi2[3];
+    if((A*point - d).lpNorm<1>() < eps)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)

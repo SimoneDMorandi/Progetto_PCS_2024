@@ -22,7 +22,7 @@ int main()
     cout << scientific << endl;
 
     // Lettura del file.
-    string path = "./DATA/FR3_data.txt";
+    string path = "./DATA/FR10_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
