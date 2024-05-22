@@ -1,5 +1,5 @@
 #include "Utils.hpp"
-#include "Traccia.hpp"
+#include "Structures.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <utility> // Pairs
+#include <stdexcept>
 
 using namespace std;
 using namespace Eigen;
@@ -81,6 +82,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
         }
     }
     file.close();
+
 
 
     /*  TEST Stampa dati
@@ -384,6 +386,10 @@ I piani vanno definiti fuori dalla funzione in modo da poter essere restituiti i
 */
 pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 {
+    if ((v1 - v2).lpNorm<1>() < 1e-9) // bisogna usare una tolleranza altrimenti non funzionano i test
+    {
+        throw invalid_argument("v1 and v2 must be different vectors");
+    }
     Vector4d pi1, pi2;
 
     Vector3d n = v1-v2; // Direzione retta, retta: v1+t*n (P0+t*n, n reale)
@@ -407,10 +413,15 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 // Funzione che calcola il piano passante per un poligono.
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3)
 {
+    double eps = numeric_limits<decltype(eps)>::epsilon();
     Vector3d AB = v2-v1;
     Vector3d AC = v3-v1;
     Vector3d n1 = AB.cross(AC); // Vettore normale al piano.
-
+    // Verifica collinearità usando il prodotto vettoriale -> se l'area del triangolo è nulla i punti sono allineati
+    if (n1.lpNorm<1>() < eps)
+    {
+        throw invalid_argument("The points do not define a valid plane (points are collinear or coincident).");
+    }
     double d = - n1.dot(v1);
     Vector4d piano;
     piano << n1, d;
@@ -418,7 +429,41 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 }
 
 /////////////////////////////////
+// Funzione che stampa le informazioni della traccia sul file di output.
+bool Export_traces_Info(Traces& t)
+{
+    ofstream of("traces_info.txt");
+    if(!of.is_open())
+    {
+        cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
+        return false;
+    }
 
+    // Verifica di coerenza delle dimensioni dei vettori
+    if (t.traces_id.size() != t.traces_gen.size() || t.traces_id.size() != t.traces_points.size())
+    {
+        cerr << "Errore: Le dimensioni dei vettori di tracce non sono coerenti." << endl;
+        return false;
+    }
+    of << "# Number of Traces" << "\n";
+    of << t.traces_id.size() << "\n";
+    for(unsigned int i = 0; i < t.traces_id.size(); i++)
+    {
+        of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
+        of << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
+
+        if (t.traces_points[i][0].size() != 3 || t.traces_points[i][1].size() != 3)
+        {
+            cerr << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
+            return false;
+        }
+
+        for(auto& coord : t.traces_points)
+        {
+            of << coord[0](0) << ";" << coord[0](1) << ";" << coord[0](2) << "\n";
+        }
+    }
+    of.close();
 // Funzione che verifica se una traccia è passante per una frattura.
 bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double eps)
 {
@@ -492,6 +537,9 @@ bool Export_traces_Type(Fractures& f,Traces& t)
 // Funzione che calcola il Bounding Box, date le coordinate di un poligono.
 vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
 {
+    if (polygon.empty()) {
+        throw invalid_argument("Il vettore di input è vuoto.");
+    }
     // Inizializzo le coordinate del punto massimo e minimo, la prima colonna contiene il punto minimo.
     vector<Vector3d> Bbox = {polygon[0],polygon[0]};
 

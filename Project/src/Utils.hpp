@@ -3,10 +3,9 @@
 #include<iostream>
 #include<string>
 #include<vector>
+#include "Structures.hpp"
 
-#include "Traccia.hpp"
-
-    using namespace std;
+using namespace std;
 
 // Funzione che importa i dati delle fratture.
 bool importFractures(const string& path, Fractures& fractures_list);

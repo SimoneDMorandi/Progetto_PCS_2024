@@ -4,7 +4,7 @@
 #include <sstream>
 #include <Eigen/Dense>
 #include <Eigen/Eigen>
-#include "Traccia.hpp"
+#include "Structures.hpp"
 #include "Utils.hpp"
 
 using namespace std;
