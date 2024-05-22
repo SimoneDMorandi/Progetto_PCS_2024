@@ -84,7 +84,8 @@ bool importFractures(const string& path, Fractures &fractures_list)
     file.close();
 
 
-    /* Stampa dati
+
+    /*  TEST Stampa dati
     for(int i = 0; i < fractures_list.N_frac; i++)
     {
         cout << "Id frattura: \t"<< i << endl;
@@ -104,11 +105,18 @@ bool importFractures(const string& path, Fractures &fractures_list)
 
 void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 {
-    // n è la dimensione letta nel file di avvio, al più tutto si interseca e ho (n^2)/2 tracce.
-    traces_list.traces_id.reserve(fractures_list.N_frac*fractures_list.N_frac);
+    // N_frac è la dimensione letta nel file di avvio, al più tutto si interseca e ho (N_frac^2)/2 tracce.
+    unsigned int max_N = (fractures_list.N_frac*fractures_list.N_frac)/2;
+    traces_list.traces_id.reserve(max_N);
+    traces_list.traces_gen.reserve(max_N);
+    traces_list.traces_points.reserve(max_N);
+    traces_list.traces_length.reserve(max_N);
 
+    // Utility per id tracce
+    unsigned int count_traces = 0;
     // Definisco la precisione di macchina
     double eps = numeric_limits<decltype(eps)>::epsilon();
+
     // Prendo ogni singola frattura e calcolo il Bounding Box.
     for(unsigned int i = 0; i < fractures_list.N_frac - 1 ; i++)
     {
@@ -181,10 +189,10 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     }
                 }
                 // Ricavo segmento della frattura 2: intersezione tra la retta contenente la traccia e due suoi lati.
-                for (unsigned int k = 0; k < fractures_list.N_vert[k]; k++)
+                for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
                 {
                     pair<Vector4d, Vector4d> planes;
-                    if(k == fractures_list.frac_vertices[i].size() -1)
+                    if(k == fractures_list.frac_vertices[j].size() -1)
                     {
                         planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
                     }
@@ -220,17 +228,17 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 // Caso di traccia passante per la prima e per la seconda frattura.
                 if(count == 2 && (points[1]-points[0]).lpNorm<1>() > eps)
                 {
-                    traces_list.traces_id.push_back(j-1);
+                    // Completo la struttura TRACES.
+                    traces_list.traces_id.push_back(count_traces);
+                    count_traces++;
                     traces_list.traces_points.push_back({points[0], points[1]});
                     traces_list.traces_length.push_back((points[1]-points[0]).lpNorm<1>());
                     traces_list.traces_gen.push_back({i,j});
-                    // Rimpimento struttura salvavita
-                    // creare un metodo che aggiunge id traccia e tips alla pair corrispondente
-                    cout << "Frattura passante per entrambi" <<traces_list.traces_id[i]<<  endl;
-                    cout << points[0] << endl;
-                    cout << endl;
-                    cout << points[1] << endl;
-                    cout << endl;
+                    // Completo la struttura FRACTURES salvavita per entrambe le fratture.
+                    fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[i].second.push_back(0);
+                    fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[j].second.push_back(0);
                 }
 
                 // Caso in cui la traccia è solo un punto, non lo considero.
@@ -253,18 +261,84 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     if((start-finish).lpNorm<1>() > eps)
                     {
                         // Completo la struttura TRACES
-                         traces_list.traces_points.push_back({start, finish});
-                         traces_list.traces_length.push_back((finish-start).lpNorm<1>());
-                         traces_list.traces_gen.push_back({i,j});
-                         cout << "Frattura" << endl;
-                         cout << start << endl;
-                         cout << endl;
-                         cout << finish << endl;
-                         cout << endl;
+                        traces_list.traces_id.push_back(count_traces);
+                        traces_list.traces_points.push_back({start, finish});
+                        traces_list.traces_length.push_back((finish-start).lpNorm<1>());
+                        traces_list.traces_gen.push_back({i,j});
 
-                        // Controllo se la frattura è passante per almeno una frattura.
-                        // ...
-                        // Completo la struttura salvavita.
+                        // Controllo se la traccia è passante per almeno una frattura.
+                        // Prima frattura
+                        unsigned int count_pass = 0;
+                        for (unsigned int k = 0; k < fractures_list.N_vert[i]; k++)
+                        {
+                            pair<Vector4d, Vector4d> planes;
+                            if(k == fractures_list.frac_vertices[i].size() -1)
+                            {
+                                planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                            }
+                            else{
+
+                                planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                            }
+
+                            if(check_pass(planes.first,planes.second,start,eps))
+                            {
+                                count_pass ++;
+                            }
+                            if(check_pass(planes.first,planes.second,finish,eps))
+                            {
+                                count_pass ++;
+                            }
+                        }
+                        if(count_pass == 2) // Caso di traccia passante per il primo poligono e non per il secondo
+                        {
+                            fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
+                            count_traces++;
+                            fractures_list.trace_type[i].second.push_back(0);
+                            fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                            fractures_list.trace_type[j].second.push_back(1);
+                        }
+                        else  // Caso di traccia non passante per il primo ma forse per il secondo
+                        {
+                            // Riempio Fractures per il poligono i
+                            fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
+                            fractures_list.trace_type[i].second.push_back(1);
+
+                            // Controllo se passante per j
+                            count_pass = 0;
+                            for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
+                            {
+                                pair<Vector4d, Vector4d> planes;
+                                if(k == fractures_list.frac_vertices[j].size() -1)
+                                {
+                                    planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
+                                }
+                                else{
+
+                                    planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
+                                }
+                                if(check_pass(planes.first,planes.second,start,eps))
+                                {
+                                    count_pass ++;
+                                }
+                                if(check_pass(planes.first,planes.second,finish,eps))
+                                {
+                                    count_pass ++;
+                                }
+                            }
+                            if(count_pass == 2) // Caso di traccia passante per j
+                            {
+                                fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
+                                count_traces++;
+                                fractures_list.trace_type[j].second.push_back(0);
+                            }
+                            else // Caso di traccia non passante per j
+                            {
+                                fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
+                                count_traces++;
+                                fractures_list.trace_type[j].second.push_back(1);
+                            }
+                        }
                     }
                 }
                 // Fine classificazione della traccia.
@@ -274,6 +348,32 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
         // Fine scorrimento fratture successive ad i.
     }
     // Fine scorrimento elenco fratture.
+
+    // Test stampa struttura salvavita
+    for (const auto& pair : fractures_list.trace_type)
+    {
+        cout << "Key: " << pair.first << endl;
+        cout << "Id traccia: ";
+        for (unsigned int val : pair.second.first)
+        {
+            cout << val << " ";
+        }
+        cout << endl;
+
+        cout << "Tips:";
+        for (int val : pair.second.second)
+        {
+            cout << val << " ";
+        }
+        cout << endl;
+        cout << endl;
+    }
+    /* Test stampa lunghezza OK
+    cout << "Lunghezze" << endl;
+    for ( const auto& length : traces_list.traces_length)
+    {
+        cout << length << endl;
+    }*/
 }
 
 ////////////////////////////////////////////////////////////////
@@ -286,11 +386,10 @@ I piani vanno definiti fuori dalla funzione in modo da poter essere restituiti i
 */
 pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 {
-    double eps = numeric_limits<decltype(eps)>::epsilon();
     if ((v1 - v2).lpNorm<1>() < 1e-9) // bisogna usare una tolleranza altrimenti non funzionano i test
+    {
         throw invalid_argument("v1 and v2 must be different vectors");
-
-
+    }
     Vector4d pi1, pi2;
 
     Vector3d n = v1-v2; // Direzione retta, retta: v1+t*n (P0+t*n, n reale)
@@ -318,11 +417,11 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
     Vector3d AB = v2-v1;
     Vector3d AC = v3-v1;
     Vector3d n1 = AB.cross(AC); // Vettore normale al piano.
-
     // Verifica collinearità usando il prodotto vettoriale -> se l'area del triangolo è nulla i punti sono allineati
     if (n1.lpNorm<1>() < eps)
+    {
         throw invalid_argument("The points do not define a valid plane (points are collinear or coincident).");
-
+    }
     double d = - n1.dot(v1);
     Vector4d piano;
     piano << n1, d;
@@ -330,7 +429,6 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 }
 
 /////////////////////////////////
-
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)
 {
@@ -347,7 +445,6 @@ bool Export_traces_Info(Traces& t)
         cerr << "Errore: Le dimensioni dei vettori di tracce non sono coerenti." << endl;
         return false;
     }
-
     of << "# Number of Traces" << "\n";
     of << t.traces_id.size() << "\n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
@@ -367,6 +464,45 @@ bool Export_traces_Info(Traces& t)
         }
     }
     of.close();
+// Funzione che verifica se una traccia è passante per una frattura.
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double eps)
+{
+    // Assumo che sia non passante in principio, caso più probabile;
+    Matrix<double,2,3> A;
+    A << pi1.head<3>().transpose(), pi2.head<3>().transpose();
+    Vector2d d;
+    d << pi1[3], pi2[3];
+    if((A*point - d).lpNorm<1>() < eps)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// Funzione che stampa le informazioni della traccia sul file di output.
+bool Export_traces_Info(Traces& t)
+{
+    /*ofstream of("traces_info.txt");
+    if(!of.is_open())
+    {
+        cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
+        return false;
+    }*/
+    cout << "# Number of Traces" << "\n";
+    cout << t.traces_id.size() << "\n";
+    cout << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
+    for(unsigned int i = 0; i < t.traces_id.size(); i++)
+    {
+        cout << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
+        for(auto& coord : t.traces_points[i])
+        {
+            cout << coord[0] << ";" << coord[1] << ";" << coord[2] << endl;
+        }
+    }
+    /*of.close();*/
     return true;
 }
 
@@ -404,7 +540,6 @@ vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
     if (polygon.empty()) {
         throw invalid_argument("Il vettore di input è vuoto.");
     }
-
     // Inizializzo le coordinate del punto massimo e minimo, la prima colonna contiene il punto minimo.
     vector<Vector3d> Bbox = {polygon[0],polygon[0]};
 

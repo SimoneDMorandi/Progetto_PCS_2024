@@ -38,12 +38,9 @@ list(APPEND DFN_LINKED_LIBRARIES PRIVATE GTest::gmock_main)
 
 # Insert Sources
 ################################################################################
-<<<<<<< Updated upstream
-=======
 add_subdirectory(src)
 add_subdirectory(TestingParaview/Code/src)
 add_subdirectory(src_test)
->>>>>>> Stashed changes
 
 # Collect sources, headers and includes
 set(DFN_SOURCES ${DFN_sources})
@@ -81,6 +78,10 @@ set(DFN_TEST_INCLUDE ${DFN_TEST_includes})
 list(APPEND ${CMAKE_PROJECT_NAME}_TEST_sources ${src_test_sources})
 list(APPEND ${CMAKE_PROJECT_NAME}_TEST_headers ${src_test_headers})
 list(APPEND ${CMAKE_PROJECT_NAME}_TEST_includes ${src_test_includes})
+
+# File
+###############################################################################
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/DATA DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 # Create executable
 ################################################################################
