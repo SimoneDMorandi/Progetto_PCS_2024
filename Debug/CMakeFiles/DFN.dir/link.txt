@@ -1,3 +1,0 @@
-D:\qt\Tools\CMake_64\bin\cmake.exe -E rm -f CMakeFiles\DFN.dir/objects.a
-D:\qt\Tools\mingw1310_64\bin\ar.exe qc CMakeFiles\DFN.dir/objects.a @CMakeFiles\DFN.dir\objects1.rsp
-D:\qt\Tools\mingw1310_64\bin\g++.exe  -Wa,-mbig-obj -g -Wall -Wextra -pedantic-errors -Wl,--whole-archive CMakeFiles\DFN.dir/objects.a -Wl,--no-whole-archive -o DFN.exe -Wl,--out-implib,libDFN.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\DFN.dir\linkLibs.rsp
