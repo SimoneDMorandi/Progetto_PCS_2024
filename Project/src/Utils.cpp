@@ -8,14 +8,14 @@
 #include <string>
 #include <vector>
 #include <utility> // Pairs
-#include <stdexcept>
+#include <stdexcept> // Throw
 
 using namespace std;
 using namespace Eigen;
 using vec2 = vector<Vector3d>;
 using vec3 = vector<vector<Vector3d>>;
 
-bool importFractures(const string& path, Fractures &fractures_list)
+bool importFractures(const string& path, Fractures &fractures_list) //OK.
 {
     ifstream file;
     file.open(path);
@@ -27,7 +27,7 @@ bool importFractures(const string& path, Fractures &fractures_list)
     getline(file, line);
 
     getline(file, line);
-    unsigned int N = 0; // numero di fratture
+    unsigned int N = 0;
 
     N = stoi(line);
 
@@ -54,7 +54,6 @@ bool importFractures(const string& path, Fractures &fractures_list)
         fractures_list.frac_vertices[i].resize(numVertices);
 
         getline(file, line);
-        // Inizializzo tutti i Vector3d a zero.
 
 
         for(unsigned int k = 0; k < 3; k++)
@@ -82,21 +81,6 @@ bool importFractures(const string& path, Fractures &fractures_list)
         }
     }
     file.close();
-
-
-
-    /*  TEST Stampa dati
-    for(int i = 0; i < fractures_list.N_frac; i++)
-    {
-        cout << "Id frattura: \t"<< i << endl;
-        for( int j = 0; j < fractures_list.N_vert[i] ; j++)
-        {
-            cout << fractures_list.frac_vertices[i][j] << endl;
-            cout << endl;
-        }
-        cout << endl;
-    }*/
-
     return true;
 }
 
@@ -112,10 +96,11 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     traces_list.traces_points.reserve(max_N);
     traces_list.traces_length.reserve(max_N);
 
-    // Utility per id tracce
+    // Utility per id tracce.
     unsigned int count_traces = 0;
-    // Definisco la precisione di macchina
-    double eps = numeric_limits<decltype(eps)>::epsilon();
+
+    // Definisco la precisione di macchina.
+    double eps = 1e-9;//numeric_limits<decltype(eps)>::epsilon();
 
     // Prendo ogni singola frattura e calcolo il Bounding Box.
     for(unsigned int i = 0; i < fractures_list.N_frac - 1 ; i++)
@@ -138,7 +123,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 // Calcolo i piani delle fratture.
                 Vector4d plane_1 = pianoFrattura(fractures_list.frac_vertices[i][0], fractures_list.frac_vertices[i][1],
                                                         fractures_list.frac_vertices[i][2]);
-
                 Vector4d plane_2 = pianoFrattura(fractures_list.frac_vertices[j][0], fractures_list.frac_vertices[j][1],
                                                         fractures_list.frac_vertices[j][2]);
 
@@ -148,7 +132,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     continue;
                 }
 
-                // Calcolo dei punti di intersezione tra i lati delle fratture e la retta contenente la traccia.
+                // Calcolo i punti di intersezione tra i lati delle fratture e la retta contenente la traccia.
                 vector<Vector3d> points;
                 unsigned int count = 0;
                 points.resize(4);
@@ -157,21 +141,32 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 for (unsigned int k = 0; k < fractures_list.N_vert[i]; k++)
                 {
                     // Calcolo l'equazione del singolo lato.
-                    pair<Vector4d, Vector4d> planes;
-                    if(k == fractures_list.frac_vertices[i].size() -1)
+                    pair<Vector4d,Vector4d> planes;
+                    if(k == fractures_list.N_vert[i] -1)
                     {
-                        planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                        try{
+                            planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                        }catch(...)
+                        {
+                                continue;
+                            }
                     }
                     else{
-                        planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                        try{
+                            planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                        }catch(...)
+                        {
+                            continue;
+                        }
                     }
                     Matrix<double,4,3> coeff;
                     coeff.row(0) << plane_1[0], plane_1[1], plane_1[2];
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << planes.first[0], planes.first[1], planes.first[2];
                     coeff.row(3) << planes.second[0], planes.second[1],planes.second[2];
-                    FullPivLU<MatrixXd> lu_decomp(coeff);
-                    if (lu_decomp.rank() == 3)
+                    JacobiSVD<MatrixXd> svd(coeff);
+                    double cond = svd.singularValues().minCoeff();
+                    if (cond  >= eps)
                     {
                         // Se c'è intersezione con la retta della frattura, salvo il punto risolvendo il sistema lineare.
                         Vector4d termineNoto;
@@ -187,18 +182,28 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     {
                         continue;
                     }
-                }
+                } // Se due punti uguali, considerane solo uno
+                // se i due punti stanno sulla stessa retta, ignora entrambi
                 // Ricavo segmento della frattura 2: intersezione tra la retta contenente la traccia e due suoi lati.
                 for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
                 {
                     pair<Vector4d, Vector4d> planes;
-                    if(k == fractures_list.frac_vertices[j].size() -1)
+                    if(k == fractures_list.N_vert[j] -1)
                     {
+                        try{
                         planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
+                            }catch(...)
+                        {
+                            continue;
+                        }
                     }
                     else{
-
+                        try{
                         planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
+                            }catch(...)
+                        {
+                            continue;
+                        }
                     }
 
                     // Intersezione tra i 3 piani
@@ -207,8 +212,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << planes.first[0],planes.first[1],planes.first[2];
                     coeff.row(3) <<  planes.second[0], planes.second[1], planes.second[2];
-                    FullPivLU<MatrixXd> lu_decomp(coeff);
-                    if (lu_decomp.rank() == 3)
+                    JacobiSVD<MatrixXd> svd(coeff);
+                    double cond =svd.singularValues().minCoeff();
+                    if (cond>= eps)
                     {
                         Vector4d termineNoto;
                         termineNoto[0] = -plane_1[3];
@@ -274,11 +280,20 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                             pair<Vector4d, Vector4d> planes;
                             if(k == fractures_list.frac_vertices[i].size() -1)
                             {
+                                try{
                                 planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                                }catch(...)
+                                {
+                                    continue;
+                                }
                             }
                             else{
-
+                                try{
                                 planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                                }catch(...)
+                                {
+                                    continue;
+                                }
                             }
 
                             if(check_pass(planes.first,planes.second,start,eps))
@@ -311,11 +326,18 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                 pair<Vector4d, Vector4d> planes;
                                 if(k == fractures_list.frac_vertices[j].size() -1)
                                 {
+                                    try{
                                     planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
+                                    }catch(...){
+                                        continue;
+                                    }
                                 }
                                 else{
-
+                                    try{
                                     planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
+                                    }catch(...){
+                                        continue;
+                                    }
                                 }
                                 if(check_pass(planes.first,planes.second,start,eps))
                                 {
@@ -432,7 +454,7 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)
 {
-    ofstream of("traces_info.txt");
+    /*ofstream of("traces_info.txt");
     if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
@@ -444,28 +466,31 @@ bool Export_traces_Info(Traces& t)
     {
         cerr << "Errore: Le dimensioni dei vettori di tracce non sono coerenti." << endl;
         return false;
-    }
-    of << "# Number of Traces" << "\n";
-    of << t.traces_id.size() << "\n";
+    }*/
+    cout << "# Number of Traces" << "\n";
+    cout << t.traces_id.size() << "\n";
+    cout << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
-        of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
-        of << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
+        cout << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
 
         if (t.traces_points[i][0].size() != 3 || t.traces_points[i][1].size() != 3)
         {
-            cerr << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
+            cout << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
             return false;
         }
 
         for(auto& coord : t.traces_points)
         {
-            of << coord[0](0) << ";" << coord[0](1) << ";" << coord[0](2) << "\n";
+            cout << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2] << "\n";
         }
     }
-    of.close();
+    /*of.close();*/
+    return true;
+}
+
 // Funzione che verifica se una traccia è passante per una frattura.
-bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double eps)
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double& eps)
 {
     // Assumo che sia non passante in principio, caso più probabile;
     Matrix<double,2,3> A;
@@ -480,30 +505,6 @@ bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,
     {
         return false;
     }
-}
-
-// Funzione che stampa le informazioni della traccia sul file di output.
-bool Export_traces_Info(Traces& t)
-{
-    /*ofstream of("traces_info.txt");
-    if(!of.is_open())
-    {
-        cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
-        return false;
-    }*/
-    cout << "# Number of Traces" << "\n";
-    cout << t.traces_id.size() << "\n";
-    cout << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
-    for(unsigned int i = 0; i < t.traces_id.size(); i++)
-    {
-        cout << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
-        for(auto& coord : t.traces_points[i])
-        {
-            cout << coord[0] << ";" << coord[1] << ";" << coord[2] << endl;
-        }
-    }
-    /*of.close();*/
-    return true;
 }
 
 /////////////////////////////////
@@ -563,11 +564,11 @@ vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
 
 // Funzione di ordinamento della struttura salvavita.
 bool Sort_Traces_Type(Fractures& f, Traces &t)
-{/*
-    // Ordinamento secondo tips
+{
+    /* Ordinamento secondo tips
     for(auto pair : f.trace_type)
     {
-        // Mergesort su pair.second
+        // Sort su pair.second
         // Quando modifico le posizioni, faccio la stessa cosa per pair.first[i] con pair.first[j]
 
         VectorXd temporary_length;

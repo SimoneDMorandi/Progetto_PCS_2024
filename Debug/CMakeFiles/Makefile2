@@ -63,17 +63,40 @@ CMAKE_BINARY_DIR = "C:\Users\simod\Dropbox (Politecnico Di Torino Studenti)\PC\D
 
 # The main recursive "all" target.
 all: CMakeFiles/DFN.dir/all
+all: CMakeFiles/DFN_TEST.dir/all
 all: src/all
+all: TestingParaview/Code/src/all
+all: src_test/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
 preinstall: src/preinstall
+preinstall: TestingParaview/Code/src/preinstall
+preinstall: src_test/preinstall
 .PHONY : preinstall
 
 # The main recursive "clean" target.
 clean: CMakeFiles/DFN.dir/clean
+clean: CMakeFiles/DFN_TEST.dir/clean
 clean: src/clean
+clean: TestingParaview/Code/src/clean
+clean: src_test/clean
 .PHONY : clean
+
+#=============================================================================
+# Directory level rules for directory TestingParaview/Code/src
+
+# Recursive "all" directory target.
+TestingParaview/Code/src/all:
+.PHONY : TestingParaview/Code/src/all
+
+# Recursive "preinstall" directory target.
+TestingParaview/Code/src/preinstall:
+.PHONY : TestingParaview/Code/src/preinstall
+
+# Recursive "clean" directory target.
+TestingParaview/Code/src/clean:
+.PHONY : TestingParaview/Code/src/clean
 
 #=============================================================================
 # Directory level rules for directory src
@@ -89,6 +112,21 @@ src/preinstall:
 # Recursive "clean" directory target.
 src/clean:
 .PHONY : src/clean
+
+#=============================================================================
+# Directory level rules for directory src_test
+
+# Recursive "all" directory target.
+src_test/all:
+.PHONY : src_test/all
+
+# Recursive "preinstall" directory target.
+src_test/preinstall:
+.PHONY : src_test/preinstall
+
+# Recursive "clean" directory target.
+src_test/clean:
+.PHONY : src_test/clean
 
 #=============================================================================
 # Target rules for target CMakeFiles/DFN.dir
@@ -115,6 +153,32 @@ DFN: CMakeFiles/DFN.dir/rule
 CMakeFiles/DFN.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN.dir\build.make CMakeFiles/DFN.dir/clean
 .PHONY : CMakeFiles/DFN.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/DFN_TEST.dir
+
+# All Build rule for target.
+CMakeFiles/DFN_TEST.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir="C:\Users\simod\Dropbox (Politecnico Di Torino Studenti)\PC\Desktop\Progetto_PCS_2024\Debug\CMakeFiles" --progress-num=4,5 "Built target DFN_TEST"
+.PHONY : CMakeFiles/DFN_TEST.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/DFN_TEST.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\simod\Dropbox (Politecnico Di Torino Studenti)\PC\Desktop\Progetto_PCS_2024\Debug\CMakeFiles" 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/DFN_TEST.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start "C:\Users\simod\Dropbox (Politecnico Di Torino Studenti)\PC\Desktop\Progetto_PCS_2024\Debug\CMakeFiles" 0
+.PHONY : CMakeFiles/DFN_TEST.dir/rule
+
+# Convenience name for target.
+DFN_TEST: CMakeFiles/DFN_TEST.dir/rule
+.PHONY : DFN_TEST
+
+# clean rule for target.
+CMakeFiles/DFN_TEST.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/clean
+.PHONY : CMakeFiles/DFN_TEST.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

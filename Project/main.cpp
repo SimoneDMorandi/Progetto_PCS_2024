@@ -40,6 +40,8 @@ int main()
     }
     cout << "Tracce esportate correttamente." << endl;
 
+    // bool Sort_Traces_Type(fractures_list,traces_list);
+
     /* Ordinamento della struttura salvavita E DELLA LUNGHEZZA
     Sort_Traces_Type(fractures_list, traces_list);
 
@@ -48,6 +50,8 @@ int main()
     {
         return 1;
     } */
+
+
     return 0;
 }
 

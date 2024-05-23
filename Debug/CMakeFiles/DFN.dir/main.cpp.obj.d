@@ -481,7 +481,7 @@ CMakeFiles/DFN.dir/main.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_list.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/allocated_ptr.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/list.tcc \
- C:/Users/simod/DROPBO~1/PC/Desktop/PROGET~1/Project/src/Traccia.hpp \
+ C:/Users/simod/DROPBO~1/PC/Desktop/PROGET~1/Project/src/Structures.hpp \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/utility \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_relops.h \
  C:/Users/simod/DROPBO~1/PC/Desktop/PROGET~1/Project/src/Utils.hpp

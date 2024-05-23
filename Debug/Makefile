@@ -128,6 +128,19 @@ DFN/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN.dir\build.make CMakeFiles/DFN.dir/build
 .PHONY : DFN/fast
 
+#=============================================================================
+# Target rules for targets named DFN_TEST
+
+# Build rule for target.
+DFN_TEST: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 DFN_TEST
+.PHONY : DFN_TEST
+
+# fast build rule for target.
+DFN_TEST/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/build
+.PHONY : DFN_TEST/fast
+
 main.obj: main.cpp.obj
 .PHONY : main.obj
 
@@ -151,6 +164,30 @@ main.s: main.cpp.s
 main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN.dir\build.make CMakeFiles/DFN.dir/main.cpp.s
 .PHONY : main.cpp.s
+
+main_test.obj: main_test.cpp.obj
+.PHONY : main_test.obj
+
+# target to build an object file
+main_test.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/main_test.cpp.obj
+.PHONY : main_test.cpp.obj
+
+main_test.i: main_test.cpp.i
+.PHONY : main_test.i
+
+# target to preprocess a source file
+main_test.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/main_test.cpp.i
+.PHONY : main_test.cpp.i
+
+main_test.s: main_test.cpp.s
+.PHONY : main_test.s
+
+# target to generate assembly for a file
+main_test.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\DFN_TEST.dir\build.make CMakeFiles/DFN_TEST.dir/main_test.cpp.s
+.PHONY : main_test.cpp.s
 
 src/Utils.obj: src/Utils.cpp.obj
 .PHONY : src/Utils.obj
@@ -185,9 +222,13 @@ help:
 	@echo ... edit_cache
 	@echo ... rebuild_cache
 	@echo ... DFN
+	@echo ... DFN_TEST
 	@echo ... main.obj
 	@echo ... main.i
 	@echo ... main.s
+	@echo ... main_test.obj
+	@echo ... main_test.i
+	@echo ... main_test.s
 	@echo ... src/Utils.obj
 	@echo ... src/Utils.i
 	@echo ... src/Utils.s

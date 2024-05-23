@@ -23,7 +23,7 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2);
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3);
 
 // Funzione che verificase lè passante per una frattura, data la retta del lato e un punto.
-bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point, const double eps);
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point, const double &eps);
 
 // Funzione che esporta le informazioni delle tracce.
 bool Export_traces_Info(Traces& traces_list);
