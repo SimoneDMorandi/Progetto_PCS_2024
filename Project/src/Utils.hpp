@@ -4,6 +4,7 @@
 #include<string>
 #include<vector>
 #include "Structures.hpp"
+#include <cassert> // MergeSort
 
 using namespace std;
 
@@ -32,4 +33,4 @@ bool Export_traces_Info(Traces& traces_list);
 bool Export_traces_Type(Fractures &f, Traces& traces_list);
 
 // Funzione di ordinamento della struttura salvavita.
-bool Sort_Traces_Type(Fractures&f, Traces& t);
+void Sort_Traces_Type(Fractures&f, Traces& t);

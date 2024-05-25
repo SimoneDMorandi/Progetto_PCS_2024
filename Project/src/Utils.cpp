@@ -7,8 +7,11 @@
 #include <Eigen/Dense>
 #include <string>
 #include <vector>
+#include <iomanip>
 #include <utility> // Pairs
 #include <stdexcept> // Throw
+#include <numeric> // iota
+#include <algorithm> // stable_sort
 
 using namespace std;
 using namespace Eigen;
@@ -454,38 +457,41 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)
 {
-    /*ofstream of("traces_info.txt");
+    ofstream of("traces_info.txt", ios::out);
     if(!of.is_open())
     {
         cerr << "Errore nell'apertura del file di Output per le tracce." << endl;
         return false;
     }
 
+    of.precision(16);
+    of << scientific << endl;
     // Verifica di coerenza delle dimensioni dei vettori
     if (t.traces_id.size() != t.traces_gen.size() || t.traces_id.size() != t.traces_points.size())
     {
         cerr << "Errore: Le dimensioni dei vettori di tracce non sono coerenti." << endl;
         return false;
-    }*/
-    cout << "# Number of Traces" << "\n";
-    cout << t.traces_id.size() << "\n";
-    cout << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
+    }
+    of << "# Number of Traces" << "\n";
+    of << t.traces_id.size() << "\n";
+    of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
-        cout << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
+        of << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
 
         if (t.traces_points[i][0].size() != 3 || t.traces_points[i][1].size() != 3)
         {
-            cout << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
+            cerr << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
             return false;
         }
 
         for(auto& coord : t.traces_points)
         {
-            cout << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2] << "\n";
+            of << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2]
+            << coord[1][0] << ";" << coord[1][1] << ";" << coord[1][2] << "\n";
         }
     }
-    /*of.close();*/
+    of.close();
     return true;
 }
 
@@ -511,25 +517,30 @@ bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,
 
 // Funzione che stampa le informazioni della traccia sul file di output
 bool Export_traces_Type(Fractures& f,Traces& t)
-{/*
-    ofstream of("traces_type.txt");
+{
+    ofstream of("traces_type.txt", ios::out);
     if(!of.is_open())
     {
-        cerr << "Errore nell'apertura del file di output per le tracce." << endl;
+        cerr << "Errore nell'apertura del file di output per il tipo di tracce." << endl;
         return false;
     }
-    for(unsigned int i = 0; i < t.traces_id.size(); i++)
+    of.precision(16);
+    of << scientific << endl;
+    for(const auto& fracture_pair : f.trace_type)
     {
-        of << "# FractureId1; NumTraces \n";
-        of << f.frac_id[i] << ";" << f.trace_type[i].first.size() << "\n";
-        cout << "# TraceId; Tips; Length" << "\n";
-        for(unsigned int j = 0; j < f.trace_type[i].first.size(); j++)
+        unsigned int frac_Id = fracture_pair.first;
+        auto& couple = fracture_pair.second;
+        vector<unsigned int> IDs = couple.first;
+        vector<unsigned int> Tips = couple.second;
+        of << "# FractureId; NumTraces \n";
+        of << frac_Id << ";" << IDs.size() << "\n";
+        of << "# TraceId; Tips; Length \n";
+        for (unsigned int i = 0; i<IDs.size(); i++)
         {
-            cout << f.trace_type[i].first[j] << ";" << f.trace_type[i].second[j]
-                 << ";" << t.traces_length[f.trace_type[i].first[j]] <<  "\n";
+            of << IDs[i] << ";" << Tips[i] << ";" << t.traces_length[IDs[i]] <<"\n";
         }
     }
-    of.close();*/
+    of.close();
     return true;
 }
 
@@ -563,33 +574,142 @@ vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
 /////////////////////////////////
 
 // Funzione di ordinamento della struttura salvavita.
-bool Sort_Traces_Type(Fractures& f, Traces &t)
+void Sort_Traces_Type(Fractures& f, Traces &t)
 {
-    /* Ordinamento secondo tips
-    for(auto pair : f.trace_type)
+    cout << endl;
+    cout << endl;
+    cout << "Inizio stampa ordinata per tips";
+    cout << endl;
+    cout << endl;
+    for(auto& fracture_pair : f.trace_type)
     {
-        // Sort su pair.second
-        // Quando modifico le posizioni, faccio la stessa cosa per pair.first[i] con pair.first[j]
-
-        VectorXd temporary_length;
-        unsigned int i = 0, change = 0;
-        bool flag = false;
-        // Ordinamento secondo length
-        for(auto id : pair.first)
+        // Evito il calcolo se il vettore ha un solo elemento
+        if(fracture_pair.second.first.size() == 1)
         {
-            // Riempio un vettore che contiene le lunghezze corrispondenti alle tracce e salvo quando
-            // le tracce iniziano ad essere passanti
-            temporary_length(i) = t.traces_length[id];
-            if(pair.second[i] != 0 && !flag)
-            {
-                change = i;
-                flag = true;
-            }
-            i++;
+            continue;
         }
-        // Applico Mergesort a temporary_length FINO A CHANGE scambiando gli elementi di pair.first
-        // non è necessario scambiare gli elementi di pair.second perché sono tutti 0
-        // faccio poi la stessa cosa con temporary_lenght DA CHANGE fino alla fine.
-    }*/
-    return true;
+        // Caso in cui ho solo una traccia passante e una non passante
+        if(fracture_pair.second.second.size() == 2 && fracture_pair.second.second[0] == 0 &&
+            fracture_pair.second.second[1] == 1)
+        {
+            continue;
+        }
+
+        // Ordino in base a passante non passante. OK
+
+        // Creo un vettore di indici.
+        vector<size_t> indices(fracture_pair.second.second.size());
+        iota(indices.begin(), indices.end(), 0);
+
+        // Ordino rispetto alla seconda componente della pair.
+        sort(indices.begin(),indices.end(),
+             [&](size_t a, size_t b) {
+                 return fracture_pair.second.second[a] < fracture_pair.second.second[b];
+             });
+
+        // Salvo gli scambi su due vettori.
+        vector<unsigned int> sortedId(fracture_pair.second.first.size());
+        vector<unsigned int> sortedTips(fracture_pair.second.second.size());
+
+        for(size_t i = 0; i<indices.size(); i++)
+        {
+            sortedId[i] = fracture_pair.second.first[indices[i]];
+            sortedTips[i] = fracture_pair.second.second[indices[i]];
+        }
+
+        // Sostituisco i vettori ordinati alla pair.
+        (fracture_pair.second).first = sortedId;
+        (fracture_pair.second).second = sortedTips;
+
+        // Stampa di prova.
+        std::cout << "ID: ";
+        for (int num : fracture_pair.second.first) {
+            std::cout << num << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "Tips: ";
+        for (int num : fracture_pair.second.second) {
+            std::cout << num << " ";
+        }
+        std::cout << std::endl;
+
+    /////
+
+        cout << endl;
+        cout << endl;
+        cout << "Inizio stampa ordinata lunghezza";
+        cout << endl;
+        cout << endl;
+        // Vettori di prova
+        /*vector<int> nums = {0,  0, 0, 1, 1};
+        vector<unsigned int> Ids = {34,67,90,3,8};
+        vector<double> lengths = {9.0,7.0,17.0,7.0,6.8};*/
+        unsigned int left = 0;
+        unsigned int right = fracture_pair.second.second.size() - 1;
+        unsigned int i = -1; // Posizione dell'ultimo 0.
+
+        // Ricerco la posizione dell'ultimo 0 con ricerca binaria -> efficiente se ordinato e lo è.
+        while (left <= right) {
+            unsigned int mid = left + (right - left) / 2;
+            if (fracture_pair.second.second[mid] == 0) {
+                i = mid;
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        // Ora ho i.
+        vector<double> partial_length;
+        for (unsigned int j=0; j<=i; j++)
+        {
+            double value = t.traces_length[(fracture_pair.second).first[j]];
+            partial_length.push_back(value);
+        }
+        // Genero un vettore di indici
+        vector<size_t> permutation(partial_length.size());
+        iota(permutation.begin(), permutation.end(), 0);
+
+        stable_sort(permutation.begin(), permutation.end(),
+                         [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
+
+        // Applico i cambiamenti fino a i al primo elemento della pair.
+        vector<unsigned int> &first_vector = fracture_pair.second.first;
+        vector<unsigned int> sorted_first_i(i+1);
+        for (int k = 0; k <= i; ++k) {
+            sorted_first_i[k] = first_vector[permutation[k]];
+        }
+        for (int k = 0; k <= i; ++k) {
+            first_vector[k] = sorted_first_i[k];
+        }
+
+        partial_length.clear();
+        for (unsigned int j = i + 1; j < fracture_pair.second.first.size(); j++) {
+            double value = t.traces_length[(fracture_pair.second).first[j]];
+            partial_length.push_back(value);
+        }
+
+        // Ordino la seconda parte da i+1 fino alla fine.
+        permutation.resize(partial_length.size());
+        iota(permutation.begin(), permutation.end(), 0);
+
+        stable_sort(permutation.begin(), permutation.end(),
+                    [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
+
+        vector<unsigned int> sorted_remaining(fracture_pair.second.first.size() - (i + 1));
+        for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
+            sorted_remaining[k] = fracture_pair.second.first[i + 1 + permutation[k]];
+        }
+        for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
+            fracture_pair.second.first[i+1+k] = sorted_remaining[k];
+        }
+
+        // Stampa di prova
+        std::cout << "Updated first vector (first " << i+1 << " positions): ";
+        for (unsigned int num : first_vector) {
+            std::cout << num << " ";
+        }
+        std::cout << std::endl;
+    }
 }

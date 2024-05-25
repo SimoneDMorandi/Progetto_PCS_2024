@@ -22,7 +22,7 @@ int main()
     cout << scientific << endl;
 
     // Lettura del file.
-    string path = "./DATA/FR10_data.txt";
+    string path = "./DATA/FR3_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
@@ -40,16 +40,12 @@ int main()
     }
     cout << "Tracce esportate correttamente." << endl;
 
-    // bool Sort_Traces_Type(fractures_list,traces_list);
-
-    /* Ordinamento della struttura salvavita E DELLA LUNGHEZZA
-    Sort_Traces_Type(fractures_list, traces_list);
-
+    Sort_Traces_Type(fractures_list,traces_list);
     bool result_type = Export_traces_Type(fractures_list,traces_list);
     if(!result_type)
     {
         return 1;
-    } */
+    }
 
 
     return 0;
