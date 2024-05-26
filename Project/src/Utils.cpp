@@ -42,6 +42,7 @@ bool importFractures(const string& path, Fractures &fractures_list) //OK.
     fractures_list.frac_vertices.resize(N);
     fractures_list.frac_id.resize(N);
     fractures_list.N_vert.resize(N);
+    fractures_list.trace_type.resize(N);
     for(unsigned int i = 0; i < N; i++) // per ogni frattura salvo le coordinate dei vertici
     {
         fractures_list.trace_type[i].first.reserve(N - 1);
@@ -375,18 +376,18 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     // Fine scorrimento elenco fratture.
 
     // Test stampa struttura salvavita
-    for (const auto& pair : fractures_list.trace_type)
+    for (unsigned int n=0; n < fractures_list.N_frac; n++)
     {
-        cout << "Key: " << pair.first << endl;
+        cout << "Key: " << n << endl;
         cout << "Id traccia: ";
-        for (unsigned int val : pair.second.first)
+        for (unsigned int val : fractures_list.trace_type[n].first)
         {
             cout << val << " ";
         }
         cout << endl;
 
         cout << "Tips:";
-        for (int val : pair.second.second)
+        for (int val : fractures_list.trace_type[n].second)
         {
             cout << val << " ";
         }
@@ -526,18 +527,18 @@ bool Export_traces_Type(Fractures& f,Traces& t)
     }
     of.precision(16);
     of << scientific << endl;
-    for(const auto& fracture_pair : f.trace_type)
+    for(unsigned int j = 0; j < f.N_frac; j++)
     {
-        unsigned int frac_Id = fracture_pair.first;
-        auto& couple = fracture_pair.second;
-        vector<unsigned int> IDs = couple.first;
-        vector<unsigned int> Tips = couple.second;
         of << "# FractureId; NumTraces \n";
-        of << frac_Id << ";" << IDs.size() << "\n";
-        of << "# TraceId; Tips; Length \n";
-        for (unsigned int i = 0; i<IDs.size(); i++)
+        of << j << ";" << f.trace_type[j].first.size() << "\n";
+        if(f.trace_type[j].first.size() == 0)
         {
-            of << IDs[i] << ";" << Tips[i] << ";" << t.traces_length[IDs[i]] <<"\n";
+            continue;
+        }
+        of << "# TraceId; Tips; Length \n";
+        for (unsigned int i = 0; i<f.trace_type[j].first.size(); i++)
+        {
+            of << f.trace_type[j].first[i] << ";" << f.trace_type[j].second[i] << ";" << t.traces_length[f.trace_type[j].first[i]] <<"\n";
         }
     }
     of.close();
@@ -584,13 +585,13 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
     for(auto& fracture_pair : f.trace_type)
     {
         // Evito il calcolo se il vettore ha un solo elemento
-        if(fracture_pair.second.first.size() == 1)
+        if(fracture_pair.first.size() == 1 || fracture_pair.first.size() == 0 )
         {
             continue;
         }
         // Caso in cui ho solo una traccia passante e una non passante
-        if(fracture_pair.second.second.size() == 2 && fracture_pair.second.second[0] == 0 &&
-            fracture_pair.second.second[1] == 1)
+        if(fracture_pair.second.size() == 2 && fracture_pair.second[0] == 0 &&
+            fracture_pair.second[1] == 1)
         {
             continue;
         }
@@ -598,41 +599,41 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         // Ordino in base a passante non passante. OK
 
         // Creo un vettore di indici.
-        vector<size_t> indices(fracture_pair.second.second.size());
+        vector<size_t> indices(fracture_pair.second.size());
         iota(indices.begin(), indices.end(), 0);
 
         // Ordino rispetto alla seconda componente della pair.
         sort(indices.begin(),indices.end(),
              [&](size_t a, size_t b) {
-                 return fracture_pair.second.second[a] < fracture_pair.second.second[b];
+                 return fracture_pair.second[a] < fracture_pair.second[b];
              });
 
         // Salvo gli scambi su due vettori.
-        vector<unsigned int> sortedId(fracture_pair.second.first.size());
-        vector<unsigned int> sortedTips(fracture_pair.second.second.size());
+        vector<unsigned int> sortedId(fracture_pair.first.size());
+        vector<unsigned int> sortedTips(fracture_pair.second.size());
 
         for(size_t i = 0; i<indices.size(); i++)
         {
-            sortedId[i] = fracture_pair.second.first[indices[i]];
-            sortedTips[i] = fracture_pair.second.second[indices[i]];
+            sortedId[i] = fracture_pair.first[indices[i]];
+            sortedTips[i] = fracture_pair.second[indices[i]];
         }
 
         // Sostituisco i vettori ordinati alla pair.
-        (fracture_pair.second).first = sortedId;
-        (fracture_pair.second).second = sortedTips;
+        fracture_pair.first = sortedId;
+        fracture_pair.second = sortedTips;
 
         // Stampa di prova.
-        std::cout << "ID: ";
-        for (int num : fracture_pair.second.first) {
-            std::cout << num << " ";
+        cout << "ID: ";
+        for (int num : fracture_pair.first) {
+            cout << num << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
 
-        std::cout << "Tips: ";
-        for (int num : fracture_pair.second.second) {
-            std::cout << num << " ";
+        cout << "Tips: ";
+        for (int num : fracture_pair.second) {
+            cout << num << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
 
     /////
 
@@ -641,18 +642,14 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         cout << "Inizio stampa ordinata lunghezza";
         cout << endl;
         cout << endl;
-        // Vettori di prova
-        /*vector<int> nums = {0,  0, 0, 1, 1};
-        vector<unsigned int> Ids = {34,67,90,3,8};
-        vector<double> lengths = {9.0,7.0,17.0,7.0,6.8};*/
         unsigned int left = 0;
-        unsigned int right = fracture_pair.second.second.size() - 1;
+        unsigned int right = fracture_pair.second.size() - 1;
         unsigned int i = -1; // Posizione dell'ultimo 0.
 
         // Ricerco la posizione dell'ultimo 0 con ricerca binaria -> efficiente se ordinato e lo è.
         while (left <= right) {
             unsigned int mid = left + (right - left) / 2;
-            if (fracture_pair.second.second[mid] == 0) {
+            if (fracture_pair.second[mid] == 0) {
                 i = mid;
                 left = mid + 1;
             } else {
@@ -664,7 +661,7 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         vector<double> partial_length;
         for (unsigned int j=0; j<=i; j++)
         {
-            double value = t.traces_length[(fracture_pair.second).first[j]];
+            double value = t.traces_length[fracture_pair.first[j]];
             partial_length.push_back(value);
         }
         // Genero un vettore di indici
@@ -675,7 +672,7 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
                          [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
 
         // Applico i cambiamenti fino a i al primo elemento della pair.
-        vector<unsigned int> &first_vector = fracture_pair.second.first;
+        vector<unsigned int> &first_vector = fracture_pair.first;
         vector<unsigned int> sorted_first_i(i+1);
         for (int k = 0; k <= i; ++k) {
             sorted_first_i[k] = first_vector[permutation[k]];
@@ -685,8 +682,8 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         }
 
         partial_length.clear();
-        for (unsigned int j = i + 1; j < fracture_pair.second.first.size(); j++) {
-            double value = t.traces_length[(fracture_pair.second).first[j]];
+        for (unsigned int j = i + 1; j < fracture_pair.first.size(); j++) {
+            double value = t.traces_length[fracture_pair.first[j]];
             partial_length.push_back(value);
         }
 
@@ -697,19 +694,19 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         stable_sort(permutation.begin(), permutation.end(),
                     [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
 
-        vector<unsigned int> sorted_remaining(fracture_pair.second.first.size() - (i + 1));
+        vector<unsigned int> sorted_remaining(fracture_pair.first.size() - (i + 1));
         for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
-            sorted_remaining[k] = fracture_pair.second.first[i + 1 + permutation[k]];
+            sorted_remaining[k] = fracture_pair.first[i + 1 + permutation[k]];
         }
         for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
-            fracture_pair.second.first[i+1+k] = sorted_remaining[k];
+            fracture_pair.first[i+1+k] = sorted_remaining[k];
         }
 
         // Stampa di prova
-        std::cout << "Updated first vector (first " << i+1 << " positions): ";
+        cout << "Updated first vector (first " << i+1 << " positions): ";
         for (unsigned int num : first_vector) {
-            std::cout << num << " ";
+            cout << num << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     }
 }
