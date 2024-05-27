@@ -416,7 +416,7 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
     {
         throw invalid_argument("v1 and v2 must be different vectors");
     }
-    Vector4d pi1, pi2;
+    Vector4d pi1, pi2, pi3;
 
     Vector3d n = v1-v2; // Direzione retta, retta: v1+t*n (P0+t*n, n reale)
 
@@ -431,7 +431,20 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
     pi2[3] = n[0]*v1[2] - n[2]*v1[0];
     pi2[1] = 0.0;
 
-    return make_pair(pi1, pi2);
+    pi3[0] = n[0];
+    pi3[2] = -n[1];
+    pi3[3] = n[1]*v1[2] - n[2]*v1[1];
+    pi3[1] = n[2];
+
+    if (pi1 == Vector4d::Zero()) {
+        return make_pair(pi3, pi2);
+    }
+    else if (pi2 == Vector4d::Zero()) {
+        return make_pair(pi1, pi3);
+    }
+    else {
+        return make_pair(pi1, pi2);
+    }
 }
 
 /////////////////////////////////
@@ -466,7 +479,7 @@ bool Export_traces_Info(Traces& t)
     }
 
     of.precision(16);
-    of << scientific << endl;
+    of << scientific;
     // Verifica di coerenza delle dimensioni dei vettori
     if (t.traces_id.size() != t.traces_gen.size() || t.traces_id.size() != t.traces_points.size())
     {
@@ -475,9 +488,10 @@ bool Export_traces_Info(Traces& t)
     }
     of << "# Number of Traces" << "\n";
     of << t.traces_id.size() << "\n";
-    of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
+    //of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
+        of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
         of << t.traces_id[i] << ";" << t.traces_gen[i][0] << ";" << t.traces_gen[i][1] << ";";
 
         if (t.traces_points[i][0].size() != 3 || t.traces_points[i][1].size() != 3)
@@ -486,11 +500,16 @@ bool Export_traces_Info(Traces& t)
             return false;
         }
 
-        for(auto& coord : t.traces_points)
+        /*for(auto& coord : t.traces_points)
         {
-            of << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2]
+            of << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2] << ";"
             << coord[1][0] << ";" << coord[1][1] << ";" << coord[1][2] << "\n";
+        }*/
+        for(auto& coord : t.traces_points[i])
+        {
+            of << coord[0] << ";" << coord[1] << ";" << coord[2] << ";";
         }
+        of << endl;
     }
     of.close();
     return true;
@@ -500,7 +519,7 @@ bool Export_traces_Info(Traces& t)
 bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double& eps)
 {
     // Assumo che sia non passante in principio, caso più probabile;
-    Matrix<double,2,3> A;
+    /*Matrix<double,2,3> A;
     A << pi1.head<3>().transpose(), pi2.head<3>().transpose();
     Vector2d d;
     d << pi1[3], pi2[3];
@@ -512,6 +531,16 @@ bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,
     {
         return false;
     }
+    }*/
+
+    // Calcola la distanza del punto dal primo piano
+    double dist1 = pi1.head<3>().dot(point) + pi1[3];
+    // Calcola la distanza del punto dal secondo piano
+    double dist2 = pi2.head<3>().dot(point) + pi2[3];
+
+    // Verifica se il punto si trova abbastanza vicino a uno dei piani entro una tolleranza eps
+    return (abs(dist1) < eps) && (abs(dist2) < eps);
+
 }
 
 /////////////////////////////////
@@ -526,7 +555,7 @@ bool Export_traces_Type(Fractures& f,Traces& t)
         return false;
     }
     of.precision(16);
-    of << scientific << endl;
+    of << scientific;
     for(unsigned int j = 0; j < f.N_frac; j++)
     {
         of << "# FractureId; NumTraces \n";
@@ -669,15 +698,15 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         iota(permutation.begin(), permutation.end(), 0);
 
         stable_sort(permutation.begin(), permutation.end(),
-                         [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
+                    [&](size_t a, size_t b) { return partial_length[a] > partial_length[b]; }); // era < ho messo >
 
         // Applico i cambiamenti fino a i al primo elemento della pair.
         vector<unsigned int> &first_vector = fracture_pair.first;
         vector<unsigned int> sorted_first_i(i+1);
-        for (int k = 0; k <= i; ++k) {
+        for (unsigned int k = 0; k <= i; ++k) {
             sorted_first_i[k] = first_vector[permutation[k]];
         }
-        for (int k = 0; k <= i; ++k) {
+        for (unsigned int k = 0; k <= i; ++k) {
             first_vector[k] = sorted_first_i[k];
         }
 
@@ -710,3 +739,88 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         cout << endl;
     }
 }
+
+// PARTE 2
+
+// Funzione che calcola il centroide
+Vector3d calculateCentroid(const vector<Vector3d>& points)
+{
+    if (points.empty()) {
+        throw invalid_argument("The list of points is empty.");
+    }
+
+    double sumX = 0.0, sumY = 0.0, sumZ = 0.0;
+    for (const auto& point : points) {
+        sumX += point[0];
+        sumY += point[1];
+        sumZ += point[2];
+    }
+
+    size_t numPoints = points.size();
+    return Vector3d(sumX / numPoints, sumY / numPoints, sumZ / numPoints);
+}
+
+// Funzione che calcola l'angolo polare
+Vector2d calculatePolarAngles(const Vector3d& vec)
+{
+    double azimuthal; // θ
+    double zenith;    // φ
+
+    // Calcolo dell'angolo azimutale (θ)
+    azimuthal = atan2(vec[1], vec[0]); // angolo in radianti tra -pi e pi
+
+    // Calcolo dell'angolo zenitale (φ)
+    double xyProjection = sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
+    zenith = atan2(xyProjection, vec[2]); // angolo in radianti tra  e pi
+
+    return {azimuthal, zenith}; // da ordinare in ordina crescente
+}
+
+// Funzione che prolunga una traccia fino ad incontrare i lati della frattura
+// Calcolo la retta passante per la traccia, e per ogni lato della frattura, trovo la loro intersezione
+vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points)
+{
+    //pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
+    pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
+    vector<Vector3d> sol;
+    for(unsigned int i = 0; i < frac_vertices.size(); i++)
+    {
+        pair<Vector4d, Vector4d> ver;
+        unsigned int count = 0;
+        if(i == 3)
+        {
+            ver = equazioneRetta(frac_vertices[0], frac_vertices[3]);
+        }
+        else
+        {
+            ver = equazioneRetta(frac_vertices[i], frac_vertices[i+1]);
+        }
+        Matrix<double,4,3> coeff;
+        coeff.row(0) << points.first[0], points.first[1], points.first[2];
+        coeff.row(1) << points.second[0], points.second[1], points.second[2];
+        coeff.row(2) << ver.first[0],ver.first[1],ver.first[2];
+        coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
+        JacobiSVD<MatrixXd> svd(coeff);
+        double cond =svd.singularValues().minCoeff();
+        if (cond>= 1e-9)
+        {
+            Vector4d termineNoto;
+            termineNoto[0] = -points.first[3];
+            termineNoto[1] = -points.second[3];
+            termineNoto[2] = -ver.first[3];
+            termineNoto[3] = -ver.second[3];
+            HouseholderQR<MatrixXd> qr(coeff);
+            sol[count] = qr.solve(termineNoto);
+            count++ ;
+            if (count == 1)
+                break;
+        }
+        else
+        {
+            continue;
+        }
+    }
+    return sol;
+}
+
+
