@@ -35,6 +35,12 @@ bool Export_traces_Type(Fractures &f, Traces& traces_list);
 // Funzione di ordinamento della struttura salvavita.
 void Sort_Traces_Type(Fractures&f, Traces& t);
 
+// Funzione che ordina un vettore fino ad un certo indice e cambia l'altro.
+template<typename T>
+void sort_pair(vector<T>& vec1, vector<unsigned int> &vec2);
+
+//Parte 2
+
 // Funzione che calcola il centroide
 Vector3d calculateCentroid(const vector<Vector3d>& points);
 
