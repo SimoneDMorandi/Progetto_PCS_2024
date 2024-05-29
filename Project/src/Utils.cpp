@@ -436,10 +436,10 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
     pi3[3] = n[1]*v1[2] - n[2]*v1[1];
     pi3[1] = n[2];
 
-    if (pi1 == Vector4d::Zero()) {
+    if (pi1.lpNorm<1>() < 1e-9) {
         return make_pair(pi3, pi2);
     }
-    else if (pi2 == Vector4d::Zero()) {
+    else if (pi2.lpNorm<1>() < 1e-9) {
         return make_pair(pi1, pi3);
     }
     else {
@@ -742,43 +742,9 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
 
 // PARTE 2
 
-// Funzione che calcola il centroide
-Vector3d calculateCentroid(const vector<Vector3d>& points)
-{
-    if (points.empty()) {
-        throw invalid_argument("The list of points is empty.");
-    }
-
-    double sumX = 0.0, sumY = 0.0, sumZ = 0.0;
-    for (const auto& point : points) {
-        sumX += point[0];
-        sumY += point[1];
-        sumZ += point[2];
-    }
-
-    size_t numPoints = points.size();
-    return Vector3d(sumX / numPoints, sumY / numPoints, sumZ / numPoints);
-}
-
-// Funzione che calcola l'angolo polare
-Vector2d calculatePolarAngles(const Vector3d& vec)
-{
-    double azimuthal; // θ
-    double zenith;    // φ
-
-    // Calcolo dell'angolo azimutale (θ)
-    azimuthal = atan2(vec[1], vec[0]); // angolo in radianti tra -pi e pi
-
-    // Calcolo dell'angolo zenitale (φ)
-    double xyProjection = sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
-    zenith = atan2(xyProjection, vec[2]); // angolo in radianti tra  e pi
-
-    return {azimuthal, zenith}; // da ordinare in ordina crescente
-}
-
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 // Calcolo la retta passante per la traccia, e per ogni lato della frattura, trovo la loro intersezione
-vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points)
+/*vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points)
 {
     //pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
     pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
@@ -821,6 +787,152 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
         }
     }
     return sol;
+}*/
+
+vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
+                                      vector<Vector3d>& traces_points, unsigned int & tip)
+{
+    pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
+    vector<Vector3d> sol = traces_points;
+    vector<Vector3d> result;
+    result.reserve(6);
+    result.push_back(traces_points[0]);
+    result.push_back(traces_points[1]);
+
+    for(unsigned int i = 0; i < frac_vertices.size(); i++)
+    {
+        pair<Vector4d, Vector4d> ver;
+        unsigned int count = 0;
+        Vector3d coor1, coor2;
+        if(i == 3)
+        {
+            ver = equazioneRetta(frac_vertices[0], frac_vertices[3]);
+            coor1 = frac_vertices[0];
+            coor2 = frac_vertices[3];
+        }
+        else
+        {
+            ver = equazioneRetta(frac_vertices[i], frac_vertices[i+1]);
+            coor1 = frac_vertices[i];
+            coor2 = frac_vertices[i+1];
+        }
+        Matrix<double,4,3> coeff;
+        coeff.row(0) << points.first[0], points.first[1], points.first[2];
+        coeff.row(1) << points.second[0], points.second[1], points.second[2];
+        coeff.row(2) << ver.first[0],ver.first[1],ver.first[2];
+        coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
+        JacobiSVD<MatrixXd> svd(coeff);
+        double cond =svd.singularValues().minCoeff();
+        if (cond >= 1e-9)
+        {
+            result.push_back(coor1);
+            result.push_back(coor2);
+            if(tip != 0)
+            {
+                Vector4d termineNoto;
+                termineNoto[0] = -points.first[3];
+                termineNoto[1] = -points.second[3];
+                termineNoto[2] = -ver.first[3];
+                termineNoto[3] = -ver.second[3];
+                HouseholderQR<MatrixXd> qr(coeff);
+                sol[count] = qr.solve(termineNoto);
+                result[count] = sol[count];
+            }
+            count++ ;
+        }
+        else
+        {
+            continue;
+        }
+    }
+    cout << "vettore result" << endl;
+    for(auto& el : result) {
+        cout << el.transpose() << endl;        // Assuming Vector3d from Eigen library
+    }
+    return result;
 }
 
+bool cutPolygons(Fractures& f, Traces &t)
+{
+    PolygonalMesh polygons;
 
+    for (unsigned int i = 0; i < f.N_frac; i++)
+    {
+        // calcolo il sottopoligono
+        vector<Vector3d> result = extendTraceToEdges(f.frac_vertices[i],
+                                                    t.traces_points[f.trace_type[i].first[0]],
+                                                    f.trace_type[i].second[0]);
+
+        int index = 0;
+        if (result.size() <= 6)
+        {
+        auto it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[3]);
+        index = distance(f.frac_vertices[i].begin(), it);
+        cout << "INDEX " << index << endl<< endl;
+
+        /*if (it != f.frac_vertices[i].end())
+        {
+            // Se trovato, calcolare l'indice
+            index = distance(f.frac_vertices[i].begin(), it);
+            cout << "INDEX" << index << endl<< endl;
+        }*/
+        }
+        else
+        {
+            return false;
+        }
+        //}
+        list<Vector3d> pol1, pol2;
+        pol1.push_back(result[0]);
+        pol1.push_back(result[1]);
+        pol2.push_back(result[0]);
+        pol2.push_back(result[1]);
+        bool newPol = false;
+        for (unsigned int j = 0; j < f.N_vert[i]; j++)
+        {
+            int pos = (index + j) % f.N_vert[i]; // sbagliato perché è 0 quando deve essere 1
+            //int pos = 0;
+            /*if(index < f.N_vert[i])
+                pos = index;
+            else
+                pos = f.N_vert[i] - index;*/
+            if (f.frac_vertices[i][pos] == result[5])
+                newPol = true;
+            if(newPol == false)
+            {
+                pol1.push_back(f.frac_vertices[i][pos]);
+            }
+            else
+            {
+                pol2.push_back(f.frac_vertices[i][pos]);
+            }
+        }
+        cout << endl;
+        cout << "pol1, frattura " << i << endl;
+        for(auto& el : pol1) {
+            cout << el.transpose() << endl;
+        }
+        cout << endl << endl;
+        cout << "pol2, frattura " << i << endl;
+        for(auto& el : pol2) {
+            cout << el.transpose() << endl;
+        }
+        //index ++;
+
+    }
+
+    return true;
+}
+
+// non mi serve fare un'altra funzione, mi basta ciclare fintanto che le tracce sono passanti per tutti i poligoni e sottopoligoni
+
+/*bool subPolygons(pair<vector<unsigned int>,vector<unsigned int>>& trace_type,
+                 Traces &t, PolygonalMesh& polygons)
+{
+    //vector<Vector3d> t_points = extendTraceToEdges()
+    // modifico la funzione extendTraceToEdges() in modo tale che mi ritorni non solo
+    // l'estensione dei punti se la traccia è non passante ma anche su quali lati sta,
+    // dato che già ciclo su tutti i lati del poligono
+    return true;
+}
+*/

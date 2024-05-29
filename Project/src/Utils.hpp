@@ -35,11 +35,8 @@ bool Export_traces_Type(Fractures &f, Traces& traces_list);
 // Funzione di ordinamento della struttura salvavita.
 void Sort_Traces_Type(Fractures&f, Traces& t);
 
-// Funzione che calcola il centroide
-Vector3d calculateCentroid(const vector<Vector3d>& points);
-
-// Funzione che calcola l'angolo polare
-Vector2d calculatePolarAngles(const Vector3d& vec);
-
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points);
+
+// Funzione che taglia i poligoni
+bool cutPolygons(Fractures& f, Traces &t);

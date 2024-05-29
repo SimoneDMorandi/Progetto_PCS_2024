@@ -47,6 +47,12 @@ int main()
         return 1;
     }
 
+    bool result_cut = cutPolygons(fractures_list,traces_list);
+    if(!result_cut)
+    {
+        return 1;
+    }
+
 
     return 0;
 }
