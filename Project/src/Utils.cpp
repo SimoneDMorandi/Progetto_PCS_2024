@@ -11,13 +11,19 @@
 #include <utility> // Pairs
 #include <stdexcept> // Throw
 #include <numeric> // iota
-#include <algorithm> // stable_sort
+#include <algorithm>
 
 using namespace std;
 using namespace Eigen;
 using vec2 = vector<Vector3d>;
 using vec3 = vector<vector<Vector3d>>;
 
+
+//////////////////////////////////////////////////////////////////////////////////////
+// PARTE 1
+/////////////////////////////////////////////////////////////////////////////////////
+
+// Funzione di lettura del file delle tracce.
 bool importFractures(const string& path, Fractures &fractures_list) //OK.
 {
     ifstream file;
@@ -43,7 +49,7 @@ bool importFractures(const string& path, Fractures &fractures_list) //OK.
     fractures_list.frac_id.resize(N);
     fractures_list.N_vert.resize(N);
     fractures_list.trace_type.resize(N);
-    for(unsigned int i = 0; i < N; i++) // per ogni frattura salvo le coordinate dei vertici
+    for(unsigned int i = 0; i < N; i++)
     {
         fractures_list.trace_type[i].first.reserve(N - 1);
         fractures_list.trace_type[i].second.reserve(N - 1);
@@ -88,9 +94,9 @@ bool importFractures(const string& path, Fractures &fractures_list) //OK.
     return true;
 }
 
-
 ///////////////////////////////////////////////////
 
+// Funzione che calcola le tracce.
 void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 {
     // N_frac è la dimensione letta nel file di avvio, al più tutto si interseca e ho (N_frac^2)/2 tracce.
@@ -104,7 +110,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     unsigned int count_traces = 0;
 
     // Definisco la precisione di macchina.
-    double eps = 1e-9;//numeric_limits<decltype(eps)>::epsilon();
+    double eps = 1e-12;  //numeric_limits<decltype(eps)>::epsilon(); troppo piccola
 
     // Prendo ogni singola frattura e calcolo il Bounding Box.
     for(unsigned int i = 0; i < fractures_list.N_frac - 1 ; i++)
@@ -148,15 +154,17 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     pair<Vector4d,Vector4d> planes;
                     if(k == fractures_list.N_vert[i] -1)
                     {
-                        try{
+                        try
+                        {
                             planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
                         }catch(...)
                         {
                                 continue;
-                            }
+                        }
                     }
                     else{
-                        try{
+                        try
+                        {
                             planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
                         }catch(...)
                         {
@@ -179,8 +187,20 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[2] = -planes.first[3];
                         termineNoto[3] = -planes.second[3];
                         HouseholderQR<MatrixXd> qr(coeff);
-                        points[count] = qr.solve(termineNoto);
-                        count++;
+                        // Controllo che il punto sia dentro la frattura.
+                        Vector3d sol = qr.solve(termineNoto);
+                         bool overLap_x = Bbox_1[0][0] - sol[0] < eps && sol[0]-Bbox_1[1][0] < eps;
+                         bool overLap_y = Bbox_1[0][1] - sol[1] < eps && sol[1]-Bbox_1[1][1] < eps;
+                         bool overLap_z = Bbox_1[0][2] - sol[2] < eps && sol[2]-Bbox_1[1][2] < eps;
+                        if(overLap_x && overLap_y && overLap_z)
+                        {
+                            points[count] = sol;
+                            count++;
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
                     else
                     {
@@ -194,17 +214,19 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     pair<Vector4d, Vector4d> planes;
                     if(k == fractures_list.N_vert[j] -1)
                     {
-                        try{
+                        try
+                        {
                         planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
-                            }catch(...)
+
+                        }catch(...)
                         {
                             continue;
                         }
                     }
                     else{
                         try{
-                        planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
-                            }catch(...)
+                        planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);    
+                        }catch(...)
                         {
                             continue;
                         }
@@ -218,7 +240,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(3) <<  planes.second[0], planes.second[1], planes.second[2];
                     JacobiSVD<MatrixXd> svd(coeff);
                     double cond =svd.singularValues().minCoeff();
-                    if (cond>= eps)
+                    if (cond >= eps)
                     {
                         Vector4d termineNoto;
                         termineNoto[0] = -plane_1[3];
@@ -226,8 +248,20 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         termineNoto[2] = -planes.first[3];
                         termineNoto[3] = -planes.second[3];
                         HouseholderQR<MatrixXd> qr(coeff);
-                        points[count] = qr.solve(termineNoto);
-                        count++ ;
+                        // Controllo che il punto sia dentro la frattura.
+                        Vector3d sol = qr.solve(termineNoto);
+                        bool overLap_x = Bbox_2[0][0] - sol[0] < eps && sol[0]-Bbox_2[1][0] < eps;
+                        bool overLap_y = Bbox_2[0][1] - sol[1] < eps && sol[1]-Bbox_2[1][1] < eps;
+                        bool overLap_z = Bbox_2[0][2] - sol[2] < eps && sol[2]-Bbox_2[1][2] < eps;
+                        if(overLap_x && overLap_y && overLap_z)
+                        {
+                            points[count] = sol;
+                            count++;
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
                     else
                     {
@@ -240,15 +274,15 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 {
                     // Completo la struttura TRACES.
                     traces_list.traces_id.push_back(count_traces);
-                    count_traces++;
                     traces_list.traces_points.push_back({points[0], points[1]});
                     traces_list.traces_length.push_back((points[1]-points[0]).lpNorm<1>());
                     traces_list.traces_gen.push_back({i,j});
                     // Completo la struttura FRACTURES salvavita per entrambe le fratture.
-                    fractures_list.trace_type[i].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
                     fractures_list.trace_type[i].second.push_back(0);
-                    fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                    fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
                     fractures_list.trace_type[j].second.push_back(0);
+                    count_traces++;
                 }
 
                 // Caso in cui la traccia è solo un punto, non lo considero.
@@ -284,16 +318,18 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                             pair<Vector4d, Vector4d> planes;
                             if(k == fractures_list.frac_vertices[i].size() -1)
                             {
-                                try{
-                                planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
+                                try
+                                {
+                                    planes = equazioneRetta(fractures_list.frac_vertices[i][0] ,fractures_list.frac_vertices[i][k]);
                                 }catch(...)
                                 {
                                     continue;
                                 }
                             }
                             else{
-                                try{
-                                planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
+                                try
+                                {
+                                    planes = equazioneRetta(fractures_list.frac_vertices[i][k] ,fractures_list.frac_vertices[i][k+1]);
                                 }catch(...)
                                 {
                                     continue;
@@ -312,10 +348,10 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         if(count_pass == 2) // Caso di traccia passante per il primo poligono e non per il secondo
                         {
                             fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
-                            count_traces++;
                             fractures_list.trace_type[i].second.push_back(0);
-                            fractures_list.trace_type[j].first.push_back(traces_list.traces_id[i]);
+                            fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
                             fractures_list.trace_type[j].second.push_back(1);
+                            count_traces++;
                         }
                         else  // Caso di traccia non passante per il primo ma forse per il secondo
                         {
@@ -330,15 +366,17 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                 pair<Vector4d, Vector4d> planes;
                                 if(k == fractures_list.frac_vertices[j].size() -1)
                                 {
-                                    try{
-                                    planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
+                                    try
+                                    {
+                                        planes = equazioneRetta(fractures_list.frac_vertices[j][0] ,fractures_list.frac_vertices[j][k]);
                                     }catch(...){
                                         continue;
                                     }
                                 }
                                 else{
-                                    try{
-                                    planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
+                                    try
+                                    {
+                                        planes = equazioneRetta(fractures_list.frac_vertices[j][k] ,fractures_list.frac_vertices[j][k+1]);
                                     }catch(...){
                                         continue;
                                     }
@@ -375,7 +413,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     }
     // Fine scorrimento elenco fratture.
 
-    // Test stampa struttura salvavita
+    /* Test stampa struttura salvavita
     for (unsigned int n=0; n < fractures_list.N_frac; n++)
     {
         cout << "Key: " << n << endl;
@@ -393,12 +431,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
         }
         cout << endl;
         cout << endl;
-    }
-    /* Test stampa lunghezza OK
-    cout << "Lunghezze" << endl;
-    for ( const auto& length : traces_list.traces_length)
-    {
-        cout << length << endl;
     }*/
 }
 
@@ -468,6 +500,7 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
 }
 
 /////////////////////////////////
+
 // Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Info(Traces& t)
 {
@@ -499,17 +532,8 @@ bool Export_traces_Info(Traces& t)
             cerr << "Errore: Le coordinate della traccia non sono nel formato corretto." << endl;
             return false;
         }
-
-        /*for(auto& coord : t.traces_points)
-        {
-            of << coord[0][0] << ";" << coord[0][1] << ";" << coord[0][2] << ";"
-            << coord[1][0] << ";" << coord[1][1] << ";" << coord[1][2] << "\n";
-        }*/
-        for(auto& coord : t.traces_points[i])
-        {
-            of << coord[0] << ";" << coord[1] << ";" << coord[2] << ";";
-        }
-        of << endl;
+        of << t.traces_points[i][0][0] << ";" << t.traces_points[i][0][1] << ";" <<t.traces_points[i][0][2] << ";"
+        << t.traces_points[i][1][0] << ";" << t.traces_points[i][1][1] << ";" << t.traces_points[i][1][2] << "\n";
     }
     of.close();
     return true;
@@ -518,8 +542,8 @@ bool Export_traces_Info(Traces& t)
 // Funzione che verifica se una traccia è passante per una frattura.
 bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double& eps)
 {
-    // Assumo che sia non passante in principio, caso più probabile;
-    /*Matrix<double,2,3> A;
+    // Assumo che sia non passante in principio, caso più probabile.
+    Matrix<double,2,3> A;
     A << pi1.head<3>().transpose(), pi2.head<3>().transpose();
     Vector2d d;
     d << pi1[3], pi2[3];
@@ -531,16 +555,13 @@ bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,
     {
         return false;
     }
-    }*/
-
     // Calcola la distanza del punto dal primo piano
-    double dist1 = pi1.head<3>().dot(point) + pi1[3];
+    //double dist1 = pi1.head<3>().dot(point) + pi1[3];
     // Calcola la distanza del punto dal secondo piano
-    double dist2 = pi2.head<3>().dot(point) + pi2[3];
+    //double dist2 = pi2.head<3>().dot(point) + pi2[3];
 
     // Verifica se il punto si trova abbastanza vicino a uno dei piani entro una tolleranza eps
-    return (abs(dist1) < eps) && (abs(dist2) < eps);
-
+    //return (abs(dist1) < eps) && (abs(dist2) < eps);
 }
 
 /////////////////////////////////
@@ -606,11 +627,6 @@ vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
 // Funzione di ordinamento della struttura salvavita.
 void Sort_Traces_Type(Fractures& f, Traces &t)
 {
-    cout << endl;
-    cout << endl;
-    cout << "Inizio stampa ordinata per tips";
-    cout << endl;
-    cout << endl;
     for(auto& fracture_pair : f.trace_type)
     {
         // Evito il calcolo se il vettore ha un solo elemento
@@ -618,177 +634,116 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         {
             continue;
         }
-        // Caso in cui ho solo una traccia passante e una non passante
+        // Evito il calcolo se il vettore ha una sola traccia passante e una non passante
         if(fracture_pair.second.size() == 2 && fracture_pair.second[0] == 0 &&
             fracture_pair.second[1] == 1)
         {
             continue;
         }
-
-        // Ordino in base a passante non passante. OK
-
-        // Creo un vettore di indici.
-        vector<size_t> indices(fracture_pair.second.size());
-        iota(indices.begin(), indices.end(), 0);
-
-        // Ordino rispetto alla seconda componente della pair.
-        sort(indices.begin(),indices.end(),
-             [&](size_t a, size_t b) {
-                 return fracture_pair.second[a] < fracture_pair.second[b];
-             });
-
-        // Salvo gli scambi su due vettori.
-        vector<unsigned int> sortedId(fracture_pair.first.size());
-        vector<unsigned int> sortedTips(fracture_pair.second.size());
-
-        for(size_t i = 0; i<indices.size(); i++)
+        // Vettori di prova
+        // Ordino in base a passante e non passante.
+        if (!is_sorted(fracture_pair.second.begin(), fracture_pair.second.end()))
         {
-            sortedId[i] = fracture_pair.first[indices[i]];
-            sortedTips[i] = fracture_pair.second[indices[i]];
-        }
 
-        // Sostituisco i vettori ordinati alla pair.
-        fracture_pair.first = sortedId;
-        fracture_pair.second = sortedTips;
+            sort_pair(fracture_pair.second,fracture_pair.first);
 
-        // Stampa di prova.
-        cout << "ID: ";
-        for (int num : fracture_pair.first) {
-            cout << num << " ";
-        }
-        cout << endl;
+            // Ricavo l'indice i di ultima traccia passante con ricerca binaria
+            unsigned int left = 0;
+            unsigned int right = fracture_pair.second.size() - 1;
+            int lastZeroIndex = -1;
+            while (left <= right)
+            {
+                int mid = left + (right - left) / 2;
+                //cout <<mid<<endl;
+                if (fracture_pair.second[mid] == 0)
+                {
+                    lastZeroIndex = mid;
+                    left = mid + 1;
+                } else
+                {
+                    right = mid - 1;
+                }
+            }
 
-        cout << "Tips: ";
-        for (int num : fracture_pair.second) {
-            cout << num << " ";
-        }
-        cout << endl;
+            // Se ci sono solo passanti o non passanti, procedo direttamente a ordinare tutto quanto per lunghezza
+            if(lastZeroIndex == -1 || lastZeroIndex == fracture_pair.second.size()-1)
+            {
+                // Creo il vettore delle lunghezze per poter ordinare gli ID.
+                vector<double> lengths;
+                lengths.reserve(fracture_pair.first.size());
+                for(auto& el: fracture_pair.first)
+                {
+                    lengths.push_back(t.traces_length[el]);
+                }
+                //vector<double> vettore temporaneo delle lunghezze
+                if (!is_sorted(lengths.begin(), lengths.end()))
+                {
+                    sort_pair(lengths,fracture_pair.first);
+                }
+            }
+            else
+            {
+                vector<double> lengths;
+                lengths.reserve(fracture_pair.first.size());
+                for(auto& el: fracture_pair.first)
+                {
+                    lengths.push_back(t.traces_length[el]);
+                }
+                if (!is_sorted(lengths.begin(), lengths.end()))
+                {
 
-    /////
+                    // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips
+                    // vector<double> lunghezze parziali dal lastzerIndex fino alla fine
+                    vector<double> first_half(lengths.begin(), lengths.begin() + lastZeroIndex + 1);
+                    vector<unsigned int> first_half_ids(fracture_pair.first.begin(), fracture_pair.first.begin() + lastZeroIndex + 1);
 
-        cout << endl;
-        cout << endl;
-        cout << "Inizio stampa ordinata lunghezza";
-        cout << endl;
-        cout << endl;
-        unsigned int left = 0;
-        unsigned int right = fracture_pair.second.size() - 1;
-        unsigned int i = -1; // Posizione dell'ultimo 0.
+                    vector<double> second_half(lengths.begin() + lastZeroIndex + 1, lengths.end());
+                    vector<unsigned int> second_half_ids(fracture_pair.first.begin() + lastZeroIndex + 1, fracture_pair.first.end());
 
-        // Ricerco la posizione dell'ultimo 0 con ricerca binaria -> efficiente se ordinato e lo è.
-        while (left <= right) {
-            unsigned int mid = left + (right - left) / 2;
-            if (fracture_pair.second[mid] == 0) {
-                i = mid;
-                left = mid + 1;
-            } else {
-                right = mid - 1;
+                    sort_pair(first_half , first_half_ids);
+                    sort_pair(second_half, second_half_ids);
+
+                    copy(first_half.begin(), first_half.end(), lengths.begin());
+                    copy(second_half.begin(), second_half.end(), lengths.begin() + lastZeroIndex + 1);
+
+                    copy(first_half_ids.begin(), first_half_ids.end(), fracture_pair.first.begin());
+                    copy(second_half_ids.begin(), second_half_ids.end(), fracture_pair.first.begin() + lastZeroIndex + 1);
+                }
             }
         }
-
-        // Ora ho i.
-        vector<double> partial_length;
-        for (unsigned int j=0; j<=i; j++)
-        {
-            double value = t.traces_length[fracture_pair.first[j]];
-            partial_length.push_back(value);
-        }
-        // Genero un vettore di indici
-        vector<size_t> permutation(partial_length.size());
-        iota(permutation.begin(), permutation.end(), 0);
-
-        stable_sort(permutation.begin(), permutation.end(),
-                    [&](size_t a, size_t b) { return partial_length[a] > partial_length[b]; }); // era < ho messo >
-
-        // Applico i cambiamenti fino a i al primo elemento della pair.
-        vector<unsigned int> &first_vector = fracture_pair.first;
-        vector<unsigned int> sorted_first_i(i+1);
-        for (unsigned int k = 0; k <= i; ++k) {
-            sorted_first_i[k] = first_vector[permutation[k]];
-        }
-        for (unsigned int k = 0; k <= i; ++k) {
-            first_vector[k] = sorted_first_i[k];
-        }
-
-        partial_length.clear();
-        for (unsigned int j = i + 1; j < fracture_pair.first.size(); j++) {
-            double value = t.traces_length[fracture_pair.first[j]];
-            partial_length.push_back(value);
-        }
-
-        // Ordino la seconda parte da i+1 fino alla fine.
-        permutation.resize(partial_length.size());
-        iota(permutation.begin(), permutation.end(), 0);
-
-        stable_sort(permutation.begin(), permutation.end(),
-                    [&](size_t a, size_t b) { return partial_length[a] < partial_length[b]; });
-
-        vector<unsigned int> sorted_remaining(fracture_pair.first.size() - (i + 1));
-        for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
-            sorted_remaining[k] = fracture_pair.first[i + 1 + permutation[k]];
-        }
-        for (unsigned int k = 0; k < sorted_remaining.size(); ++k) {
-            fracture_pair.first[i+1+k] = sorted_remaining[k];
-        }
-
-        // Stampa di prova
-        cout << "Updated first vector (first " << i+1 << " positions): ";
-        for (unsigned int num : first_vector) {
-            cout << num << " ";
-        }
-        cout << endl;
     }
 }
 
+template<typename T>
+// Funzione che ordina vec1 fino all'index e applica gli scambi a vec2
+void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
+{
+    vector<unsigned int> indices(vec1.size());
+    iota(indices.begin(), indices.end(), 0);
+
+    // Sort indices based on values in vec1
+    sort(indices.begin(), indices.end(),
+              [&vec1](unsigned int i, unsigned int j) { return vec1[i] < vec1[j]; });
+
+    // Reorder vec1 and vec2 based on sorted indices
+    vector<T> sorted_vec1(vec1.size());
+    vector<unsigned int> sorted_vec2(vec2.size());
+
+    for (size_t i = 0; i < vec1.size(); ++i) {
+        sorted_vec1[i] = vec1[indices[i]];
+        sorted_vec2[i] = vec2[indices[i]];
+    }
+
+    // Update vec1 and vec2 with sorted values
+    vec1 = move(sorted_vec1);
+    vec2 = move(sorted_vec2);
+}
+
+////////////////////////////////////////////////////////////////////////////////////
 // PARTE 2
 
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 // Calcolo la retta passante per la traccia, e per ogni lato della frattura, trovo la loro intersezione
-/*vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points)
-{
-    //pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
-    pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
-    vector<Vector3d> sol;
-    for(unsigned int i = 0; i < frac_vertices.size(); i++)
-    {
-        pair<Vector4d, Vector4d> ver;
-        unsigned int count = 0;
-        if(i == 3)
-        {
-            ver = equazioneRetta(frac_vertices[0], frac_vertices[3]);
-        }
-        else
-        {
-            ver = equazioneRetta(frac_vertices[i], frac_vertices[i+1]);
-        }
-        Matrix<double,4,3> coeff;
-        coeff.row(0) << points.first[0], points.first[1], points.first[2];
-        coeff.row(1) << points.second[0], points.second[1], points.second[2];
-        coeff.row(2) << ver.first[0],ver.first[1],ver.first[2];
-        coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
-        JacobiSVD<MatrixXd> svd(coeff);
-        double cond =svd.singularValues().minCoeff();
-        if (cond>= 1e-9)
-        {
-            Vector4d termineNoto;
-            termineNoto[0] = -points.first[3];
-            termineNoto[1] = -points.second[3];
-            termineNoto[2] = -ver.first[3];
-            termineNoto[3] = -ver.second[3];
-            HouseholderQR<MatrixXd> qr(coeff);
-            sol[count] = qr.solve(termineNoto);
-            count++ ;
-            if (count == 1)
-                break;
-        }
-        else
-        {
-            continue;
-        }
-    }
-    return sol;
-}*/
-
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
                                       vector<Vector3d>& traces_points, unsigned int & tip)
 {
@@ -799,10 +754,11 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
     result.push_back(traces_points[0]);
     result.push_back(traces_points[1]);
 
+    unsigned int count = 0;
+
     for(unsigned int i = 0; i < frac_vertices.size(); i++)
     {
         pair<Vector4d, Vector4d> ver;
-        unsigned int count = 0;
         Vector3d coor1, coor2;
         if(i == 3)
         {
@@ -823,10 +779,12 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
         coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
         JacobiSVD<MatrixXd> svd(coeff);
         double cond =svd.singularValues().minCoeff();
-        if (cond >= 1e-9)
+        if (cond > 1e-2)
         {
-            result.push_back(coor1);
-            result.push_back(coor2);
+            if(find(result.begin(), result.end(), coor1) == result.end()) // controllo se ho già trovato gli estremi del segmento
+                result.push_back(coor1);
+            if(find(result.begin(), result.end(), coor2) == result.end())
+                result.push_back(coor2);
             if(tip != 0)
             {
                 Vector4d termineNoto;
@@ -846,78 +804,178 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
         }
     }
     cout << "vettore result" << endl;
-    for(auto& el : result) {
-        cout << el.transpose() << endl;        // Assuming Vector3d from Eigen library
-    }
+    /*for(auto& el : result) {
+        cout << el.transpose() << endl;
+    }*/
     return result;
 }
 
 bool cutPolygons(Fractures& f, Traces &t)
 {
-    PolygonalMesh polygons;
-
+    //PolygonalMesh polygons;
+    double eps = 1e-9;
     for (unsigned int i = 0; i < f.N_frac; i++)
     {
+        pair<vector<Vector3d>,vector<Vector3d>> polygons;
+        for (unsigned int k = 0; k < f.trace_type[i].first.size(); k++)
+        {
+            bool flag_pol1 = false; // suppongo il caso più semplice, cioè la traccia non sta nei sottopoligoni
+            bool flag_pol2 = false;
+            pair<vector<Vector3d>,vector<Vector3d>> polygons1;
+            pair<vector<Vector3d>,vector<Vector3d>> polygons2;
+            if(k!=0)
+            {
+                vector<Vector3d> bBox1 = Calculate_Bounding_Box(polygons.first);
+                vector<Vector3d> bBox2 = Calculate_Bounding_Box(polygons.second);
+
+                for (auto& el : t.traces_points[f.trace_type[i].first[k]])
+                {
+                    /*bool overlap_x = abs((el[0]-bBox1[0][0])) > eps && abs((el[0] - bBox1[1][0])) > eps;
+                    bool overlap_y = abs((el[1]-bBox1[0][1])) > eps && abs((el[1] - bBox1[1][1])) > eps;
+                    bool overlap_z = abs((el[2]-bBox1[0][2])) > eps && abs((el[2] - bBox1[1][2])) > eps;*/ // restituisce false anche se non deve perché sono tutti zero
+                    bool overlap_x = (el[0] >= bBox1[0][0] - eps) && (el[0] <= bBox1[1][0] + eps);
+                    bool overlap_y = (el[1] >= bBox1[0][1] - eps) && (el[1] <= bBox1[1][1] + eps);
+                    bool overlap_z = (el[2] >= bBox1[0][2] - eps) && (el[2] <= bBox1[1][2] + eps);
+                    if(!overlap_x || !overlap_y || !overlap_z)
+                    {
+                        flag_pol1 = true;// flag non considerare poligono 1
+                        break;
+                    }
+                }
+
+                for (auto& el : t.traces_points[f.trace_type[i].first[k]])
+                {
+                    /*bool overlap_x = (el[0]-bBox2[0][0]) > eps && (el[0] - bBox2[1][0]) > eps;
+                    bool overlap_y = (el[1]-bBox2[0][1]) > eps && (el[1] - bBox2[1][1]) > eps;
+                    bool overlap_z = (el[2]-bBox2[0][2]) > eps && (el[2] - bBox2[1][2]) > eps;*/
+                    bool overlap_x = (el[0] >= bBox2[0][0] - eps) && (el[0] <= bBox2[1][0] + eps);
+                    bool overlap_y = (el[1] >= bBox2[0][1] - eps) && (el[1] <= bBox2[1][1] + eps);
+                    bool overlap_z = (el[2] >= bBox2[0][2] - eps) && (el[2] <= bBox2[1][2] + eps);
+                    if(!overlap_x || !overlap_y || !overlap_z)
+                    {
+                        flag_pol2 = true;// flag non considerare poligono 1
+                        break;
+                    }
+                }
+
+                if(flag_pol1 == false)
+                {
+                    polygons1 = subPolygons(polygons.first,
+                                            t.traces_points[f.trace_type[i].first[k]],
+                                            f.trace_type[i].second[k]);
+                    for(auto& el : polygons1.first)
+                    {
+                        cout << el.transpose() << endl;
+                    }
+                    cout << endl << endl;
+                    cout << "pol2, frattura " << i << ", traccia " << k << endl;
+                    for(auto& el : polygons1.second)
+                    {
+                        cout << el.transpose() << endl;
+                    }
+                }
+
+                if(flag_pol2 == false)
+                {
+                    polygons2 = subPolygons(polygons.second,
+                                            t.traces_points[f.trace_type[i].first[k]],
+                                            f.trace_type[i].second[k]);
+                    for(auto& el : polygons2.first)
+                    {
+                        cout << el.transpose() << endl;
+                    }
+                    cout << endl << endl;
+                    cout << "pol2, frattura " << i << ", traccia " << k << endl;
+                    for(auto& el : polygons2.second)
+                    {
+                        cout << el.transpose() << endl;
+                    }
+                }
+
+                // da cambiare perché polygons cambia nel ciclo, non mi bastano polygons 1 e 2
+
+            }
+            else
+            {
+                polygons = subPolygons(f.frac_vertices[i],
+                                       t.traces_points[f.trace_type[i].first[k]],
+                                       f.trace_type[i].second[k]);
+                cout << "pol1, frattura " << i << ", traccia " << k << endl;
+                for(auto& el : polygons.first)
+                {
+                    cout << el.transpose() << endl;
+                }
+                cout << endl << endl;
+                cout << "pol2, frattura " << i << ", traccia " << k << endl;
+                for(auto& el : polygons.second)
+                {
+                    cout << el.transpose() << endl;
+                }
+            }
+            // Inizio il taglio dei poligoni
+
+        } // chiudo ciclo sulle tracce di un poligono
+
+
+
         // calcolo il sottopoligono
-        vector<Vector3d> result = extendTraceToEdges(f.frac_vertices[i],
+        /*vector<Vector3d> result = extendTraceToEdges(f.frac_vertices[i],
                                                     t.traces_points[f.trace_type[i].first[0]],
                                                     f.trace_type[i].second[0]);
 
-        int index = 0;
-        if (result.size() <= 6)
+        unsigned int index1 = 0;
+        unsigned int index2 = 0;
+        if (result.size() == 6)
         {
-        auto it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[3]);
-        index = distance(f.frac_vertices[i].begin(), it);
-        cout << "INDEX " << index << endl<< endl;
-
-        /*if (it != f.frac_vertices[i].end())
-        {
-            // Se trovato, calcolare l'indice
-            index = distance(f.frac_vertices[i].begin(), it);
-            cout << "INDEX" << index << endl<< endl;
-        }*/
+        auto it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[2]);
+        index1 = distance(f.frac_vertices[i].begin(), it);
+        it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[4]);
+        index2 = distance(f.frac_vertices[i].begin(), it);
         }
         else
         {
             return false;
         }
         //}
-        list<Vector3d> pol1, pol2;
-        pol1.push_back(result[0]);
+        list<Vector3d> pol1, pol2; // metti vector
         pol1.push_back(result[1]);
-        pol2.push_back(result[0]);
-        pol2.push_back(result[1]);
+        pol1.push_back(result[0]);
         bool newPol = false;
         for (unsigned int j = 0; j < f.N_vert[i]; j++)
         {
-            int pos = (index + j) % f.N_vert[i]; // sbagliato perché è 0 quando deve essere 1
-            //int pos = 0;
-            /*if(index < f.N_vert[i])
-                pos = index;
-            else
-                pos = f.N_vert[i] - index;*/
-            if (f.frac_vertices[i][pos] == result[5])
-                newPol = true;
+            //int pos = (index + j) % f.N_vert[i];
+
+
             if(newPol == false)
             {
-                pol1.push_back(f.frac_vertices[i][pos]);
+                pol1.push_back(f.frac_vertices[i][j]);
             }
             else
             {
-                pol2.push_back(f.frac_vertices[i][pos]);
+                pol2.push_back(f.frac_vertices[i][j]);
             }
+
+
+            if (j == index1)
+                newPol = true;
+
+            if (j == index2)
+                newPol = false;
         }
+        pol2.push_back(result[1]);
+        pol2.push_back(result[0]);
         cout << endl;
         cout << "pol1, frattura " << i << endl;
-        for(auto& el : pol1) {
+        for(auto& el : pol1)
+        {
             cout << el.transpose() << endl;
         }
         cout << endl << endl;
         cout << "pol2, frattura " << i << endl;
-        for(auto& el : pol2) {
+        for(auto& el : pol2)
+        {
             cout << el.transpose() << endl;
-        }
-        //index ++;
+        }*/
 
     }
 
@@ -926,13 +984,53 @@ bool cutPolygons(Fractures& f, Traces &t)
 
 // non mi serve fare un'altra funzione, mi basta ciclare fintanto che le tracce sono passanti per tutti i poligoni e sottopoligoni
 
-/*bool subPolygons(pair<vector<unsigned int>,vector<unsigned int>>& trace_type,
-                 Traces &t, PolygonalMesh& polygons)
+pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
+                                                     vector<Vector3d> traces_points,
+                                                     unsigned int tip)
 {
-    //vector<Vector3d> t_points = extendTraceToEdges()
-    // modifico la funzione extendTraceToEdges() in modo tale che mi ritorni non solo
-    // l'estensione dei punti se la traccia è non passante ma anche su quali lati sta,
-    // dato che già ciclo su tutti i lati del poligono
-    return true;
+    vector<Vector3d> result = extendTraceToEdges(frac_vertices,
+                                                 traces_points,
+                                                 tip);
+
+    unsigned int index1 = 0;
+    unsigned int index2 = 0;
+    if (result.size() == 6)
+    {
+        auto it = find(frac_vertices.begin(), frac_vertices.end(), result[2]);
+        index1 = distance(frac_vertices.begin(), it);
+        it = find(frac_vertices.begin(), frac_vertices.end(), result[4]);
+        index2 = distance(frac_vertices.begin(), it);
+    }
+    //else
+    //{
+    //    return false;
+    //}
+    // al posto di questo lanciare eccezione
+    vector<Vector3d> pol1, pol2;
+    pol1.push_back(result[1]);
+    pol1.push_back(result[0]);
+    bool newPol = false;
+    for (unsigned int j = 0; j < frac_vertices.size(); j++)
+    {
+        if(newPol == false)
+        {
+            pol1.push_back(frac_vertices[j]);
+        }
+        else
+        {
+            pol2.push_back(frac_vertices[j]);
+        }
+
+
+        if (j == index1)
+            newPol = true;
+
+        if (j == index2)
+            newPol = false;
+    }
+    pol2.push_back(result[1]);
+    pol2.push_back(result[0]);
+
+    return make_pair(pol1, pol2);
 }
-*/
+

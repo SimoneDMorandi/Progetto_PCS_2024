@@ -35,8 +35,18 @@ bool Export_traces_Type(Fractures &f, Traces& traces_list);
 // Funzione di ordinamento della struttura salvavita.
 void Sort_Traces_Type(Fractures&f, Traces& t);
 
+// Funzione che ordina un vettore fino ad un certo indice e cambia l'altro.
+template<typename T>
+void sort_pair(vector<T>& vec1, vector<unsigned int> &vec2);
+
+//Parte 2
+
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points);
 
 // Funzione che taglia i poligoni
 bool cutPolygons(Fractures& f, Traces &t);
+
+pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
+                                                     vector<Vector3d> traces_points,
+                                                     unsigned int tip);
