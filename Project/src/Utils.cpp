@@ -579,16 +579,19 @@ bool Export_traces_Type(Fractures& f,Traces& t)
     of << scientific;
     for(unsigned int j = 0; j < f.N_frac; j++)
     {
-        of << "# FractureId; NumTraces \n";
-        of << j << ";" << f.trace_type[j].first.size() << "\n";
-        if(f.trace_type[j].first.size() == 0)
+        if(f.trace_type[j].first.size() != 0)
         {
-            continue;
-        }
-        of << "# TraceId; Tips; Length \n";
-        for (unsigned int i = 0; i<f.trace_type[j].first.size(); i++)
-        {
-            of << f.trace_type[j].first[i] << ";" << f.trace_type[j].second[i] << ";" << t.traces_length[f.trace_type[j].first[i]] <<"\n";
+            of << "# FractureId; NumTraces \n";
+            of << j << ";" << f.trace_type[j].first.size() << "\n";
+            if(f.trace_type[j].first.size() == 0)
+            {
+                continue;
+            }
+            of << "# TraceId; Tips; Length \n";
+            for (unsigned int i = 0; i<f.trace_type[j].first.size(); i++)
+            {
+                of << f.trace_type[j].first[i] << ";" << f.trace_type[j].second[i] << ";" << t.traces_length[f.trace_type[j].first[i]] <<"\n";
+            }
         }
     }
     of.close();
