@@ -13,6 +13,10 @@
 #include <numeric> // iota
 #include <algorithm>
 
+// Paraview
+#include "UCDUtilities.hpp"
+using namespace Gedim;
+
 using namespace std;
 using namespace Eigen;
 using vec2 = vector<Vector3d>;
@@ -110,7 +114,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     unsigned int count_traces = 0;
 
     // Definisco la precisione di macchina.
-    double eps = 1e-12;  //numeric_limits<decltype(eps)>::epsilon(); troppo piccola
+    double eps = numeric_limits<decltype(eps)>::epsilon(); // Precisione 1D
+    double tau = 1e-12; // Precisione 2D
 
     // Prendo ogni singola frattura e calcolo il Bounding Box.
     for(unsigned int i = 0; i < fractures_list.N_frac - 1 ; i++)
@@ -123,9 +128,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
             vec2 Bbox_2 = Calculate_Bounding_Box(fractures_list.frac_vertices[j]);
 
             // Verifico l'intersezione tra i Bounding Box.
-            bool overlap_x = (Bbox_1[1])[0]-(Bbox_2[0])[0]>eps && (Bbox_2[1])[0]-(Bbox_1[0])[0]>eps;
-            bool overlap_y = (Bbox_1[1])[1]-(Bbox_2[0])[1]>eps && (Bbox_2[1])[1]-(Bbox_1[0])[1]>eps;
-            bool overlap_z = (Bbox_1[1])[2]-(Bbox_2[0])[2]>eps && (Bbox_2[1])[2]-(Bbox_1[0])[2]>eps;
+            bool overlap_x = Bbox_1[1][0]>Bbox_2[0][0] && Bbox_2[1][0]>Bbox_1[0][0];
+            bool overlap_y = Bbox_1[1][1]>Bbox_2[0][1] && Bbox_2[1][1]>Bbox_1[0][1];
+            bool overlap_z = Bbox_1[1][2]>Bbox_2[0][2] && Bbox_2[1][2]>Bbox_1[0][2];
 
             // Se c'è intersezione, procedo col calcolare i piani delle fratture i e j e trovare la retta di intersezione.
             if(overlap_x && overlap_y && overlap_z)
@@ -137,7 +142,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                                         fractures_list.frac_vertices[j][2]);
 
                 // Controllo che i piani non siano paralleli. In caso contrario, ignoro.
-                if((plane_1.head<3>().cross(plane_2.head<3>())).lpNorm<1>()<eps)
+                if((plane_1.head<3>().cross(plane_2.head<3>())).lpNorm<1>()<tau)
                 {
                     continue;
                 }
@@ -176,9 +181,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << planes.first[0], planes.first[1], planes.first[2];
                     coeff.row(3) << planes.second[0], planes.second[1],planes.second[2];
-                    JacobiSVD<MatrixXd> svd(coeff);
-                    double cond = svd.singularValues().minCoeff();
-                    if (cond  >= eps)
+                    FullPivLU<MatrixXd> lu_decomp(coeff);
+                    lu_decomp.setThreshold(eps);
+                    if (lu_decomp.rank() == 3)
                     {
                         // Se c'è intersezione con la retta della frattura, salvo il punto risolvendo il sistema lineare.
                         Vector4d termineNoto;
@@ -189,9 +194,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         HouseholderQR<MatrixXd> qr(coeff);
                         // Controllo che il punto sia dentro la frattura.
                         Vector3d sol = qr.solve(termineNoto);
-                         bool overLap_x = Bbox_1[0][0] - sol[0] < eps && sol[0]-Bbox_1[1][0] < eps;
-                         bool overLap_y = Bbox_1[0][1] - sol[1] < eps && sol[1]-Bbox_1[1][1] < eps;
-                         bool overLap_z = Bbox_1[0][2] - sol[2] < eps && sol[2]-Bbox_1[1][2] < eps;
+                        bool overLap_x = Bbox_1[0][0] - sol[0] <= eps && sol[0]-Bbox_1[1][0] <= eps;
+                        bool overLap_y = Bbox_1[0][1] - sol[1] <= eps && sol[1]-Bbox_1[1][1] <= eps;
+                        bool overLap_z = Bbox_1[0][2] - sol[2] <= eps && sol[2]-Bbox_1[1][2] <= eps;
                         if(overLap_x && overLap_y && overLap_z)
                         {
                             points[count] = sol;
@@ -238,9 +243,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     coeff.row(1) << plane_2[0], plane_2[1], plane_2[2];
                     coeff.row(2) << planes.first[0],planes.first[1],planes.first[2];
                     coeff.row(3) <<  planes.second[0], planes.second[1], planes.second[2];
-                    JacobiSVD<MatrixXd> svd(coeff);
-                    double cond =svd.singularValues().minCoeff();
-                    if (cond >= eps)
+                    FullPivLU<MatrixXd> lu_decomp(coeff);
+                    lu_decomp.setThreshold(eps);
+                    if (lu_decomp.rank() == 3)
                     {
                         Vector4d termineNoto;
                         termineNoto[0] = -plane_1[3];
@@ -250,9 +255,9 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         HouseholderQR<MatrixXd> qr(coeff);
                         // Controllo che il punto sia dentro la frattura.
                         Vector3d sol = qr.solve(termineNoto);
-                        bool overLap_x = Bbox_2[0][0] - sol[0] < eps && sol[0]-Bbox_2[1][0] < eps;
-                        bool overLap_y = Bbox_2[0][1] - sol[1] < eps && sol[1]-Bbox_2[1][1] < eps;
-                        bool overLap_z = Bbox_2[0][2] - sol[2] < eps && sol[2]-Bbox_2[1][2] < eps;
+                        bool overLap_x = Bbox_2[0][0] - sol[0] <= eps && sol[0]-Bbox_2[1][0] <= eps;
+                        bool overLap_y = Bbox_2[0][1] - sol[1] <= eps && sol[1]-Bbox_2[1][1] <= eps;
+                        bool overLap_z = Bbox_2[0][2] - sol[2] <= eps && sol[2]-Bbox_2[1][2] <= eps;
                         if(overLap_x && overLap_y && overLap_z)
                         {
                             points[count] = sol;
@@ -270,7 +275,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 }
 
                 // Caso di traccia passante per la prima e per la seconda frattura.
-                if(count == 2 && (points[1]-points[0]).lpNorm<1>() > eps)
+                if( count == 4 && ((points[1]-points[3]).lpNorm<1>() < tau && (points[0]-points[2]).lpNorm<1>() < tau)
+                     ||((points[1]-points[2]).lpNorm<1>() < tau && (points[0]-points[3]).lpNorm<1>() < tau))
                 {
                     // Completo la struttura TRACES.
                     traces_list.traces_id.push_back(count_traces);
@@ -285,29 +291,28 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     count_traces++;
                 }
 
-                // Caso in cui la traccia è solo un punto, non lo considero.
-                else if (count == 1)
-                {
-                    continue;
-                }
-
                 // Caso di traccia non passante per almeno una frattura
                  /* Calcolo del segmento corrispondente alla traccia, avendo i 4 punti [A,C//B,D]
                  Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti alla traccia
                  1 e gli altri alla traccia 2, se calcolo il minimo tra gli inizi trovo l'inizio della traccia
                   e calcolando il massimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
-                else if (count > 1 && (points[1]-points[0]).lpNorm<1>() > eps)
+                else if (count == 4)
                 {
-                    Vector3d start;
-                    Vector3d finish;
-                    start = points[0].array().min(points[2].array());
-                    finish = points[1].array().max(points[3].array());
-                    if((start-finish).lpNorm<1>() > eps)
+                    sort(points.begin(),points.end(), [eps](const Vector3d& a, const Vector3d& b){
+                        if(abs(a.x() -b.x()) > eps)
+                            return a.x() < b.x();
+                        else if (abs(a.y()-b.y()) > eps)
+                            return a.y() < b.y();
+                        else
+                            return a.z() < b.z();
+                    });
+
+                    if((points[2]-points[1]).lpNorm<1>() > eps)
                     {
                         // Completo la struttura TRACES
                         traces_list.traces_id.push_back(count_traces);
-                        traces_list.traces_points.push_back({start, finish});
-                        traces_list.traces_length.push_back((finish-start).lpNorm<1>());
+                        traces_list.traces_points.push_back({points[1], points[2]});
+                        traces_list.traces_length.push_back((points[2]-points[1]).lpNorm<1>());
                         traces_list.traces_gen.push_back({i,j});
 
                         // Controllo se la traccia è passante per almeno una frattura.
@@ -336,11 +341,11 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                 }
                             }
 
-                            if(check_pass(planes.first,planes.second,start,eps))
+                            if(check_pass(planes.first,planes.second,points[1],eps))
                             {
                                 count_pass ++;
                             }
-                            if(check_pass(planes.first,planes.second,finish,eps))
+                            if(check_pass(planes.first,planes.second,points[2],eps))
                             {
                                 count_pass ++;
                             }
@@ -381,11 +386,11 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                         continue;
                                     }
                                 }
-                                if(check_pass(planes.first,planes.second,start,eps))
+                                if(check_pass(planes.first,planes.second,points[1],eps))
                                 {
                                     count_pass ++;
                                 }
-                                if(check_pass(planes.first,planes.second,finish,eps))
+                                if(check_pass(planes.first,planes.second,points[2],eps))
                                 {
                                     count_pass ++;
                                 }
@@ -540,28 +545,15 @@ bool Export_traces_Info(Traces& t)
 }
 
 // Funzione che verifica se una traccia è passante per una frattura.
-bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double& eps)
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point,const double& tau)
 {
-    // Assumo che sia non passante in principio, caso più probabile.
-    Matrix<double,2,3> A;
-    A << pi1.head<3>().transpose(), pi2.head<3>().transpose();
-    Vector2d d;
-    d << pi1[3], pi2[3];
-    if((A*point - d).lpNorm<1>() < eps)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
     // Calcola la distanza del punto dal primo piano
-    //double dist1 = pi1.head<3>().dot(point) + pi1[3];
+    double dist1 = pi1.head<3>().dot(point) + pi1[3];
     // Calcola la distanza del punto dal secondo piano
-    //double dist2 = pi2.head<3>().dot(point) + pi2[3];
+    double dist2 = pi2.head<3>().dot(point) + pi2[3];
 
     // Verifica se il punto si trova abbastanza vicino a uno dei piani entro una tolleranza eps
-    //return (abs(dist1) < eps) && (abs(dist2) < eps);
+    return (abs(dist1) < tau) && (abs(dist2) < tau);
 }
 
 /////////////////////////////////
@@ -647,71 +639,67 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
         // Ordino in base a passante e non passante.
         if (!is_sorted(fracture_pair.second.begin(), fracture_pair.second.end()))
         {
-
             sort_pair(fracture_pair.second,fracture_pair.first);
+        }
 
-            // Ricavo l'indice i di ultima traccia passante con ricerca binaria
-            unsigned int left = 0;
-            unsigned int right = fracture_pair.second.size() - 1;
-            int lastZeroIndex = -1;
-            while (left <= right)
+        // Ricavo l'indice i di ultima traccia passante con ricerca binaria
+        int left = 0;
+        int right = fracture_pair.second.size() - 1;
+        int lastZeroIndex = -1;
+        while (left <= right)
+        {
+            int mid = left + (right - left) / 2;
+            if (fracture_pair.second[mid] == 0)
             {
-                int mid = left + (right - left) / 2;
-                //cout <<mid<<endl;
-                if (fracture_pair.second[mid] == 0)
-                {
-                    lastZeroIndex = mid;
-                    left = mid + 1;
-                } else
-                {
-                    right = mid - 1;
-                }
+                lastZeroIndex = mid;
+                left = mid + 1;
+            } else
+            {
+                right = mid - 1;
             }
-
-            // Se ci sono solo passanti o non passanti, procedo direttamente a ordinare tutto quanto per lunghezza
-            if(lastZeroIndex == -1 || lastZeroIndex == fracture_pair.second.size()-1)
+        }
+        if(lastZeroIndex == -1 || lastZeroIndex == fracture_pair.first.size()) // Tutte 0 o tutte 1
+        {
+            // Creo il vettore delle lunghezze per poter ordinare gli ID.
+            vector<double> lengths;
+            lengths.reserve(fracture_pair.first.size());
+            for(auto& el: fracture_pair.first)
             {
-                // Creo il vettore delle lunghezze per poter ordinare gli ID.
-                vector<double> lengths;
-                lengths.reserve(fracture_pair.first.size());
-                for(auto& el: fracture_pair.first)
-                {
-                    lengths.push_back(t.traces_length[el]);
-                }
-                //vector<double> vettore temporaneo delle lunghezze
-                if (!is_sorted(lengths.begin(), lengths.end()))
-                {
-                    sort_pair(lengths,fracture_pair.first);
-                }
+                lengths.push_back(t.traces_length[el]);
             }
-            else
+            //vector<double> vettore temporaneo delle lunghezze
+            if (!is_sorted(lengths.begin(), lengths.end()))
             {
-                vector<double> lengths;
-                lengths.reserve(fracture_pair.first.size());
-                for(auto& el: fracture_pair.first)
-                {
-                    lengths.push_back(t.traces_length[el]);
-                }
-                if (!is_sorted(lengths.begin(), lengths.end()))
-                {
+                sort_pair(lengths,fracture_pair.first);
+            }
+        }
+        else
+        {
+            vector<double> lengths;
+            lengths.reserve(fracture_pair.first.size());
+            for(auto& el: fracture_pair.first)
+            {
+                lengths.push_back(t.traces_length[el]);
+            }
+            if (!is_sorted(lengths.begin(), lengths.end()))
+            {
 
-                    // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips
-                    // vector<double> lunghezze parziali dal lastzerIndex fino alla fine
-                    vector<double> first_half(lengths.begin(), lengths.begin() + lastZeroIndex + 1);
-                    vector<unsigned int> first_half_ids(fracture_pair.first.begin(), fracture_pair.first.begin() + lastZeroIndex + 1);
+                // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips
+                // vector<double> lunghezze parziali dal lastzerIndex fino alla fine
+                vector<double> first_half(lengths.begin(), lengths.begin() + lastZeroIndex + 1);
+                vector<unsigned int> first_half_ids(fracture_pair.first.begin(), fracture_pair.first.begin() + lastZeroIndex + 1);
 
-                    vector<double> second_half(lengths.begin() + lastZeroIndex + 1, lengths.end());
-                    vector<unsigned int> second_half_ids(fracture_pair.first.begin() + lastZeroIndex + 1, fracture_pair.first.end());
+                vector<double> second_half(lengths.begin() + lastZeroIndex + 1, lengths.end());
+                vector<unsigned int> second_half_ids(fracture_pair.first.begin() + lastZeroIndex + 1, fracture_pair.first.end());
 
-                    sort_pair(first_half , first_half_ids);
-                    sort_pair(second_half, second_half_ids);
+                sort_pair(first_half , first_half_ids);
+                sort_pair(second_half, second_half_ids);
 
-                    copy(first_half.begin(), first_half.end(), lengths.begin());
-                    copy(second_half.begin(), second_half.end(), lengths.begin() + lastZeroIndex + 1);
+                copy(first_half.begin(), first_half.end(), lengths.begin());
+                copy(second_half.begin(), second_half.end(), lengths.begin() + lastZeroIndex + 1);
 
-                    copy(first_half_ids.begin(), first_half_ids.end(), fracture_pair.first.begin());
-                    copy(second_half_ids.begin(), second_half_ids.end(), fracture_pair.first.begin() + lastZeroIndex + 1);
-                }
+                copy(first_half_ids.begin(), first_half_ids.end(), fracture_pair.first.begin());
+                copy(second_half_ids.begin(), second_half_ids.end(), fracture_pair.first.begin() + lastZeroIndex + 1);
             }
         }
     }
@@ -740,6 +728,48 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
     // Update vec1 and vec2 with sorted values
     vec1 = move(sorted_vec1);
     vec2 = move(sorted_vec2);
+}
+
+
+
+
+// Paraview
+
+void Export_Paraview(Fractures &f)
+{
+    int N = 0;
+    for (const auto& vec : f.frac_vertices) {
+        N += vec.size();
+    }
+
+    MatrixXd points(3,N); // OK
+    int col = 0;
+    for (const auto& vec : f.frac_vertices) {
+        for (const auto& point : vec) {
+            points(0, col) = point.x();
+            points(1, col) = point.y();
+            points(2, col) = point.z();
+            ++col;
+        }
+    }
+
+    vector<vector<unsigned int >> polygon_vertices; // OK
+    int start_index = 0;
+    for (unsigned int n : f.N_vert) {
+        vector<unsigned int> polygon_ids;
+        for (unsigned int i = 0; i < n; ++i) {
+            polygon_ids.push_back(start_index + i);
+        }
+        polygon_vertices.push_back(polygon_ids);
+        start_index += n;
+    }
+
+    vector<UCDProperty<double>> points_properties;
+    vector<UCDProperty<double>> polygons_properties;
+    VectorXi material;
+    Gedim::UCDUtilities UCD;
+    UCD.ExportPoints("points_paraview.inp",points,points_properties,material);
+    UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

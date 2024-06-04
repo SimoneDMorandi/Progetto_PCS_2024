@@ -29,6 +29,8 @@ int main()
     }
     cout << "Fratture importate correttamente." << endl;
 
+    Export_Paraview(fractures_list);
+
     // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
 
@@ -52,7 +54,6 @@ int main()
     {
         return 1;
     }
-
 
     return 0;
 }

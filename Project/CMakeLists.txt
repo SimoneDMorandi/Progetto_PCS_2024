@@ -30,7 +30,6 @@ list(APPEND DFN_LINKED_LIBRARIES PRIVATE Threads::Threads)
 
 ## GTest
 find_package(GTest REQUIRED)
-
 list(APPEND DFN_LINKED_LIBRARIES PRIVATE GTest::gtest)
 list(APPEND DFN_LINKED_LIBRARIES PRIVATE GTest::gtest_main)
 list(APPEND DFN_LINKED_LIBRARIES PRIVATE GTest::gmock)
@@ -51,33 +50,13 @@ set(DFN_TEST_SOURCES ${DFN_TEST_sources})
 set(DFN_TEST_HEADERS ${DFN_TEST_headers})
 set(DFN_TEST_INCLUDE ${DFN_TEST_includes})
 
+# Add UCDUtilities sources and headers
+list(APPEND DFN_SOURCES src/UCDUtilities.cpp)
+list(APPEND DFN_HEADERS src/UCDUtilities.hpp)
 
-
-#list(APPEND DFN_SOURCES ${src_paraview_sources})
-#list(APPEND DFN_HEADERS ${src_paraview_headers})
-#list(APPEND DFN_INCLUDE ${src_paraview_includes})
-
-
-#add_subdirectory(src)
-
-#list(APPEND DFN_SOURCES ${DFN_sources})
-#list(APPEND DFN_HEADERS ${DFN_headers})
-#list(APPEND DFN_INCLUDE ${DFN_includes})
-
-#add_subdirectory(TestingParaview/Code/src)
-#list(APPEND ${CMAKE_PROJECT_NAME}_sources ${src_paraview_sources})
-#list(APPEND ${CMAKE_PROJECT_NAME}_headers ${src_paraview_headers})
-#list(APPEND ${CMAKE_PROJECT_NAME}_includes ${src_paraview_includes})
-
-#add_subdirectory(src_test)
-
-#list(APPEND DFN_TEST_SOURCES ${DFN_TEST_sources})
-#list(APPEND DFN_TEST_HEADERS ${DFN_TEST_headers})
-#list(APPEND DFN_TEST_INCLUDE ${DFN_TEST_includes})
-
-list(APPEND ${CMAKE_PROJECT_NAME}_TEST_sources ${src_test_sources})
-list(APPEND ${CMAKE_PROJECT_NAME}_TEST_headers ${src_test_headers})
-list(APPEND ${CMAKE_PROJECT_NAME}_TEST_includes ${src_test_includes})
+# Ensure sources for the test target are also included
+list(APPEND DFN_TEST_SOURCES src/UCDUtilities.cpp)
+list(APPEND DFN_TEST_HEADERS src/UCDUtilities.hpp)
 
 # File
 ###############################################################################
@@ -86,21 +65,19 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/DATA DESTINATION ${CMAKE_CURRENT_BINARY_DI
 # Create executable
 ################################################################################
 add_executable(${PROJECT_NAME}
-	main.cpp
-        ${DFN_SOURCES}
-    ${DFN_HEADERS})
+    main.cpp
+    ${DFN_SOURCES}
+)
 
-add_executable(${PROJECT_NAME}_TEST main_test.cpp
-    #${DFN_SOURCES}
-    #${DFN_HEADERS}
+add_executable(${PROJECT_NAME}_TEST
+    main_test.cpp
     ${DFN_TEST_SOURCES}
-    ${DFN_TEST_HEADERS})
-
+)
 
 target_link_libraries(${PROJECT_NAME} ${DFN_LINKED_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${DFN_INCLUDE})
 target_compile_options(${PROJECT_NAME} PUBLIC -fPIC)
 
-target_include_directories(${CMAKE_PROJECT_NAME}_TEST PUBLIC ${${CMAKE_PROJECT_NAME}_includes} ${${CMAKE_PROJECT_NAME}_TEST_includes})
-target_link_libraries(${CMAKE_PROJECT_NAME}_TEST PUBLIC ${${CMAKE_PROJECT_NAME}_LINKED_LIBRARIES})
+target_include_directories(${CMAKE_PROJECT_NAME}_TEST PUBLIC ${DFN_INCLUDE} ${DFN_TEST_INCLUDE})
+target_link_libraries(${CMAKE_PROJECT_NAME}_TEST PUBLIC ${DFN_LINKED_LIBRARIES})
 target_compile_options(${CMAKE_PROJECT_NAME}_TEST PUBLIC -fPIC)

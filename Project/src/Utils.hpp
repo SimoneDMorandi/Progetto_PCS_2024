@@ -23,8 +23,8 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2);
 // Funzione che calcola il piano passante per una frattura, dati 3 vertici.
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3);
 
-// Funzione che verificase lè passante per una frattura, data la retta del lato e un punto.
-bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point, const double &eps);
+// Funzione che verifica se la traccia è passante per una frattura, data la retta del lato e un punto.
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point, const double &tau);
 
 // Funzione che esporta le informazioni delle tracce.
 bool Export_traces_Info(Traces& traces_list);
@@ -38,6 +38,9 @@ void Sort_Traces_Type(Fractures&f, Traces& t);
 // Funzione che ordina un vettore fino ad un certo indice e cambia l'altro.
 template<typename T>
 void sort_pair(vector<T>& vec1, vector<unsigned int> &vec2);
+
+// Paraview parte 1
+void Export_Paraview(Fractures& f);
 
 //Parte 2
 
