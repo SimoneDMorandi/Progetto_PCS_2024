@@ -50,3 +50,7 @@ bool cutPolygons(Fractures& f, Traces &t);
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,
                                                      unsigned int tip);
+
+PolygonalMesh fillPolygonalMesh(pair<vector<Vector3d>, vector<Vector3d>> polygons);
+
+void printSubPolygons(const vector<PolygonalMesh>& sub_polygons);
