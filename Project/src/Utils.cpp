@@ -742,7 +742,7 @@ void Export_Paraview(Fractures &f)
         N += vec.size();
     }
 
-    MatrixXd points(3,N); // OK
+    MatrixXd points(3,N);
     int col = 0;
     for (const auto& vec : f.frac_vertices) {
         for (const auto& point : vec) {
@@ -753,11 +753,13 @@ void Export_Paraview(Fractures &f)
         }
     }
 
-    vector<vector<unsigned int >> polygon_vertices; // OK
+    vector<vector<unsigned int >> polygon_vertices;
     int start_index = 0;
-    for (unsigned int n : f.N_vert) {
+    for (unsigned int n : f.N_vert)
+    {
         vector<unsigned int> polygon_ids;
-        for (unsigned int i = 0; i < n; ++i) {
+        for (unsigned int i = 0; i < n; ++i)
+        {
             polygon_ids.push_back(start_index + i);
         }
         polygon_vertices.push_back(polygon_ids);
@@ -768,7 +770,6 @@ void Export_Paraview(Fractures &f)
     vector<UCDProperty<double>> polygons_properties;
     VectorXi material;
     Gedim::UCDUtilities UCD;
-    UCD.ExportPoints("points_paraview.inp",points,points_properties,material);
     UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
 }
 

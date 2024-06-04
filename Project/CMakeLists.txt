@@ -67,11 +67,13 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/DATA DESTINATION ${CMAKE_CURRENT_BINARY_DI
 add_executable(${PROJECT_NAME}
     main.cpp
     ${DFN_SOURCES}
+    ${DFN_HEADERS}  # Add headers here
 )
 
 add_executable(${PROJECT_NAME}_TEST
     main_test.cpp
     ${DFN_TEST_SOURCES}
+    ${DFN_TEST_HEADERS}  # Add test headers here
 )
 
 target_link_libraries(${PROJECT_NAME} ${DFN_LINKED_LIBRARIES})
