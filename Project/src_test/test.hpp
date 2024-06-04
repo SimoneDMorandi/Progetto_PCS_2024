@@ -374,35 +374,35 @@ TEST(Export_traces_Type, InvalidExport)
 TEST(Sort_Traces_Type, ValidSort)
 {
     Fractures fractures;
-    fractures.trace_type = {
-        {{2, 1, 3, 4}, {1, 0, 0, 1}}, // Mixed tips and lengths
-        {{5, 6}, {0, 0}}              // Only passante traces
-    };
+    fractures.trace_type.push_back({{1, 2, 3}, {0, 1, 0}});
+    fractures.trace_type.push_back({{0, 5, 6}, {1, 1, 1}});
+    fractures.trace_type.push_back({{7, 8, 9}, {0, 0, 0}});
 
     Traces traces;
     traces.traces_length = {
-        5.0, 2.0, 4.0, 3.0, // Lengths for traces 2, 1, 3, 4
-        1.0, 6.0             // Lengths for traces 5, 6
+        5.0, 2.0, 4.0, 3.0, 1.0, 7.5, 3.6, 9.0, 8.0, 10.0
     };
 
     Sort_Traces_Type(fractures, traces);
 
-    vector<unsigned int> expected_ids_1 = {3, 1, 4, 2}; // Sorted by tips and length
-    vector<unsigned int> expected_tips_1 = {0, 0, 1, 1};
+    vector<unsigned int> expected_ids_1 = {1,3,2};
+    vector<unsigned int> expected_tips_1 = {0,0,1};
 
-    vector<unsigned int> expected_ids_2 = {5, 6};
-    vector<unsigned int> expected_tips_2 = {0, 0};
+    vector<unsigned int> expected_ids_2 = {6,0,5};
+    vector<unsigned int> expected_tips_2 = {1,1,1};
+
+    vector<unsigned int> expected_ids_3 = {8,7,9};
+    vector<unsigned int> expected_tips_3 = {0,0,0};
 
     EXPECT_EQ(fractures.trace_type[0].first, expected_ids_1);
     EXPECT_EQ(fractures.trace_type[0].second, expected_tips_1);
 
     EXPECT_EQ(fractures.trace_type[1].first, expected_ids_2);
     EXPECT_EQ(fractures.trace_type[1].second, expected_tips_2);
+
+    EXPECT_EQ(fractures.trace_type[2].first, expected_ids_3);
+    EXPECT_EQ(fractures.trace_type[2].second, expected_tips_3);
 }
 
-/*TEST(Sort_Traces_Type, InvalidSort)
-{
-
-}*/
 
 //////////////////////////////////////////////////////////////////////////////////////////
