@@ -22,14 +22,12 @@ int main()
     cout << scientific << endl;
 
     // Lettura del file.
-    string path = "./DATA/FR82_data.txt";
+    string path = "./DATA/FR50_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
     }
     cout << "Fratture importate correttamente." << endl;
-
-    Export_Paraview(fractures_list);
 
     // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
@@ -49,11 +47,13 @@ int main()
         return 1;
     }
 
+    Export_Paraview(fractures_list,traces_list);
+    /*
     bool result_cut = cutPolygons(fractures_list,traces_list);
     if(!result_cut)
     {
         return 1;
-    }
+    }*/
 
     return 0;
 }
