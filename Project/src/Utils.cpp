@@ -710,7 +710,7 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
             {
 
                 // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips
-                // vector<double> lunghezze parziali dal lastzerIndex fino alla fine
+                // vector<double> lunghezze parziali dal lastzeroIndex fino alla fine
                 vector<double> first_half(lengths.begin(), lengths.begin() + lastZeroIndex + 1);
                 vector<unsigned int> first_half_ids(fracture_pair.first.begin(), fracture_pair.first.begin() + lastZeroIndex + 1);
 
