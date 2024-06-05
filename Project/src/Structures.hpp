@@ -40,11 +40,11 @@ struct PolygonalMesh
     // Cell1D
     unsigned int NumberOfCell1Ds = 0;
     vector<unsigned int> IdCell1Ds = {}; // identificativo
-    vector<Vector2i> VerticesCell1Ds = {}; // id vertici adiacenti
+    vector<vector<unsigned int>> VerticesCell1Ds = {}; // id vertici adiacenti
 
     // Cell2D
     unsigned int NumberOfCell2Ds = 0;
-    vector<unsigned int> IdCell2Ds = {};
+    //vector<unsigned int> IdCell2Ds = {}; non li chiede
     vector<unsigned int> NumberOfVertices = {}; // num vertici
     vector<unsigned int> NumberOfEdges = {}; // num lati
     vector<vector<unsigned int>> VerticesCell2Ds = {}; // id vertici
