@@ -8,6 +8,10 @@
 
 using namespace std;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Parte 1
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Funzione che importa i dati delle fratture.
 bool importFractures(const string& path, Fractures& fractures_list);
 
@@ -41,15 +45,24 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2);
 
 // Paraview parte 1
 void Export_Paraview(Fractures& f, Traces& t);
+void Export_Paraview(Fractures& f);
+void Export_Paraview(vector<vector<Vector3d> > &found_polygons);
 
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Parte 2
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points);
 
-// Funzione che taglia i poligoni
-bool cutPolygons(Fractures& f, Traces &t);
+// Funzioni che tagliano i poligoni
+bool cutPolygons(Fractures& f, Traces &t, Fractures &final_pol);
 
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,
                                                      unsigned int tip);
+
+// Funzione di stampa della struttura dati per verifica, da eliminare poi
+void printSubPolygons(vector<PolygonalMesh> &sub_polygons);

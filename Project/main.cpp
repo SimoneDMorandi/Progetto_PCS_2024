@@ -29,6 +29,8 @@ int main()
     }
     cout << "Fratture importate correttamente." << endl;
 
+    //Export_Paraview(fractures_list);
+
     // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
 
@@ -47,13 +49,16 @@ int main()
         return 1;
     }
 
-    Export_Paraview(fractures_list,traces_list);
-    /*
-    bool result_cut = cutPolygons(fractures_list,traces_list);
+    //Export_Paraview(fractures_list,traces_list);
+
+    Fractures found_polygons;
+    bool result_cut = cutPolygons(fractures_list,traces_list, found_polygons);
     if(!result_cut)
     {
         return 1;
-    }*/
+    }
+
+    Export_Paraview(found_polygons);
 
     return 0;
 }

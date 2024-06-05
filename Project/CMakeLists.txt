@@ -65,16 +65,13 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/DATA DESTINATION ${CMAKE_CURRENT_BINARY_DI
 # Create executable
 ################################################################################
 add_executable(${PROJECT_NAME}
-    main.cpp
-    ${DFN_SOURCES}
-    ${DFN_HEADERS}  # Add headers here
-)
+        main.cpp
+        ${DFN_SOURCES}
+    ${DFN_HEADERS})
 
-add_executable(${PROJECT_NAME}_TEST
-    main_test.cpp
+add_executable(${PROJECT_NAME}_TEST main_test.cpp
     ${DFN_TEST_SOURCES}
-    ${DFN_TEST_HEADERS}  # Add test headers here
-)
+    ${DFN_TEST_HEADERS})
 
 target_link_libraries(${PROJECT_NAME} ${DFN_LINKED_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${DFN_INCLUDE})

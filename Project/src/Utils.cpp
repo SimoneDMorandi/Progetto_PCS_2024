@@ -12,6 +12,7 @@
 #include <stdexcept> // Throw
 #include <numeric> // iota
 #include <algorithm>
+#include <queue>
 
 // Paraview
 #include "UCDUtilities.hpp"
@@ -825,8 +826,46 @@ void Export_Paraview(Fractures &f, Traces &t)
     UCD.ExportSegments("traces.inp",points_t,index_edges,points_properties, polygons_properties, material_t);
 }
 
+void Export_Paraview(Fractures &f)
+{
+    int N = 0;
+    for (const auto& vec : f.frac_vertices) {
+        N += vec.size();
+    }
+
+    MatrixXd points(3,N); // OK
+    int col = 0;
+    for (const auto& vec : f.frac_vertices) {
+        for (const auto& point : vec) {
+            points(0, col) = point.x();
+            points(1, col) = point.y();
+            points(2, col) = point.z();
+            ++col;
+        }
+    }
+
+    vector<vector<unsigned int >> polygon_vertices; // OK
+    int start_index = 0;
+    for (unsigned int n : f.N_vert) {
+        vector<unsigned int> polygon_ids;
+        for (unsigned int i = 0; i < n; ++i) {
+            polygon_ids.push_back(start_index + i);
+        }
+        polygon_vertices.push_back(polygon_ids);
+        start_index += n;
+    }
+
+    vector<UCDProperty<double>> points_properties;
+    vector<UCDProperty<double>> polygons_properties;
+    VectorXi material;
+    Gedim::UCDUtilities UCD;
+    UCD.ExportPoints("points_paraview.inp",points,points_properties,material);
+    UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////
 // PARTE 2
+////////////////////////////////////////////////////////////////////////////////////
 
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura
 // Calcolo la retta passante per la traccia, e per ogni lato della frattura, trovo la loro intersezione
@@ -834,11 +873,12 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
                                       vector<Vector3d>& traces_points, unsigned int & tip)
 {
     pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
-    vector<Vector3d> sol = traces_points;
+    Vector3d sol;
     vector<Vector3d> result;
     result.reserve(6);
     result.push_back(traces_points[0]);
     result.push_back(traces_points[1]);
+    double eps = 1e-9;
 
     unsigned int count = 0;
 
@@ -846,17 +886,28 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
     {
         pair<Vector4d, Vector4d> ver;
         Vector3d coor1, coor2;
+        vector<Vector3d> bBox = Calculate_Bounding_Box(frac_vertices);
         if(i == 3)
         {
-            ver = equazioneRetta(frac_vertices[0], frac_vertices[3]);
-            coor1 = frac_vertices[0];
-            coor2 = frac_vertices[3];
+            if ((frac_vertices[0] - frac_vertices[3]).lpNorm<1>() >= eps)
+            {
+                ver = equazioneRetta(frac_vertices[0], frac_vertices[3]);
+                coor1 = frac_vertices[0];
+                coor2 = frac_vertices[3];
+            }
+            else
+                break;
         }
         else
         {
-            ver = equazioneRetta(frac_vertices[i], frac_vertices[i+1]);
-            coor1 = frac_vertices[i];
-            coor2 = frac_vertices[i+1];
+            if ((frac_vertices[i] - frac_vertices[i+1]).lpNorm<1>() >= eps)
+            {
+                ver = equazioneRetta(frac_vertices[i], frac_vertices[i+1]);
+                coor1 = frac_vertices[i];
+                coor2 = frac_vertices[i+1];
+            }
+            else
+                break;
         }
         Matrix<double,4,3> coeff;
         coeff.row(0) << points.first[0], points.first[1], points.first[2];
@@ -865,13 +916,16 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
         coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
         JacobiSVD<MatrixXd> svd(coeff);
         double cond =svd.singularValues().minCoeff();
-        if (cond > 1e-2)
+        if (cond > 1e-9) // evita il caso di lati paralleli
         {
-            if(find(result.begin(), result.end(), coor1) == result.end()) // controllo se ho già trovato gli estremi del segmento
-                result.push_back(coor1);
-            if(find(result.begin(), result.end(), coor2) == result.end())
-                result.push_back(coor2);
-            if(tip != 0)
+            if(tip == 0)
+            {
+                if(find(result.begin(), result.end(), coor1) == result.end()) // controllo se ho già trovato gli estremi del segmento
+                    result.push_back(coor1);
+                if(find(result.begin(), result.end(), coor2) == result.end())
+                    result.push_back(coor2);
+            }
+            else
             {
                 Vector4d termineNoto;
                 termineNoto[0] = -points.first[3];
@@ -879,196 +933,180 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
                 termineNoto[2] = -ver.first[3];
                 termineNoto[3] = -ver.second[3];
                 HouseholderQR<MatrixXd> qr(coeff);
-                sol[count] = qr.solve(termineNoto);
-                result[count] = sol[count];
+                sol = qr.solve(termineNoto);
+
+                bool overlap_x = (sol[0] >= bBox[0][0] - eps) && (sol[0] <= bBox[1][0] + eps);
+                bool overlap_y = (sol[1] >= bBox[0][1] - eps) && (sol[1] <= bBox[1][1] + eps);
+                bool overlap_z = (sol[2] >= bBox[0][2] - eps) && (sol[2] <= bBox[1][2] + eps);
+
+                if(overlap_x && overlap_y && overlap_z)
+                {
+                    result[count] = sol;
+                    result.push_back(coor1);
+                    result.push_back(coor2);
+                    count++ ;
+                }
             }
-            count++ ;
         }
         else
         {
             continue;
         }
     }
-    cout << "vettore result" << endl;
-    /*for(auto& el : result) {
+    /*cout << "vettore result" << endl;
+    for(auto& el : result) {
         cout << el.transpose() << endl;
     }*/
     return result;
 }
 
-bool cutPolygons(Fractures& f, Traces &t)
+bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
 {
-    //PolygonalMesh polygons;
+    vector<PolygonalMesh> result;
+    vector<vector<Vector3d>> found_polygons;
     double eps = 1e-9;
+
     for (unsigned int i = 0; i < f.N_frac; i++)
     {
-        pair<vector<Vector3d>,vector<Vector3d>> polygons;
+        PolygonalMesh mesh;
+        // Inizializza la coda con il poligono iniziale
+        queue<vector<Vector3d>> polygon_queue;
+        polygon_queue.push(f.frac_vertices[i]);
+
         for (unsigned int k = 0; k < f.trace_type[i].first.size(); k++)
         {
-            bool flag_pol1 = false; // suppongo il caso più semplice, cioè la traccia non sta nei sottopoligoni
-            bool flag_pol2 = false;
-            pair<vector<Vector3d>,vector<Vector3d>> polygons1;
-            pair<vector<Vector3d>,vector<Vector3d>> polygons2;
-            if(k!=0)
-            {
-                vector<Vector3d> bBox1 = Calculate_Bounding_Box(polygons.first);
-                vector<Vector3d> bBox2 = Calculate_Bounding_Box(polygons.second);
+            int trace_id = f.trace_type[i].first[k];
+            unsigned int tip = f.trace_type[i].second[k];
+            unsigned int size_queue = polygon_queue.size();
 
-                for (auto& el : t.traces_points[f.trace_type[i].first[k]])
+            for (unsigned int j = 0; j < size_queue; j++)
+            {
+                vector<Vector3d> current_polygon = polygon_queue.front();
+                polygon_queue.pop();
+
+                unsigned int flag = 0;
+
+                // Il tip è 1 se considero le tracce successive alla prima
+                if(k != 0)
+                    tip = 1;
+
+                // Controllo che la traccia non coincida con un lato del poligono
+                for(auto& el : current_polygon)
                 {
-                    /*bool overlap_x = abs((el[0]-bBox1[0][0])) > eps && abs((el[0] - bBox1[1][0])) > eps;
-                    bool overlap_y = abs((el[1]-bBox1[0][1])) > eps && abs((el[1] - bBox1[1][1])) > eps;
-                    bool overlap_z = abs((el[2]-bBox1[0][2])) > eps && abs((el[2] - bBox1[1][2])) > eps;*/ // restituisce false anche se non deve perché sono tutti zero
+                    unsigned int count = 0;
+                    for(unsigned int n = 0; n < 3; n++)
+                        if (abs(el[n] - t.traces_points[trace_id][0][n]) <= eps || abs(el[n] - t.traces_points[trace_id][1][n]) <= eps)
+                        {
+                            count++;
+                        }
+                    if(count == 3)
+                        flag++;
+                }
+                // Controllo che la traccia sia interna al poligono
+                vector<Vector3d> bBox1 = Calculate_Bounding_Box(current_polygon);
+
+                for (auto& el : t.traces_points[trace_id])
+                {
                     bool overlap_x = (el[0] >= bBox1[0][0] - eps) && (el[0] <= bBox1[1][0] + eps);
                     bool overlap_y = (el[1] >= bBox1[0][1] - eps) && (el[1] <= bBox1[1][1] + eps);
                     bool overlap_z = (el[2] >= bBox1[0][2] - eps) && (el[2] <= bBox1[1][2] + eps);
                     if(!overlap_x || !overlap_y || !overlap_z)
                     {
-                        flag_pol1 = true;// flag non considerare poligono 1
+                        flag = 1; // flag non considerare poligono
                         break;
                     }
                 }
-
-                for (auto& el : t.traces_points[f.trace_type[i].first[k]])
+                if (flag >= 1)
                 {
-                    /*bool overlap_x = (el[0]-bBox2[0][0]) > eps && (el[0] - bBox2[1][0]) > eps;
-                    bool overlap_y = (el[1]-bBox2[0][1]) > eps && (el[1] - bBox2[1][1]) > eps;
-                    bool overlap_z = (el[2]-bBox2[0][2]) > eps && (el[2] - bBox2[1][2]) > eps;*/
-                    bool overlap_x = (el[0] >= bBox2[0][0] - eps) && (el[0] <= bBox2[1][0] + eps);
-                    bool overlap_y = (el[1] >= bBox2[0][1] - eps) && (el[1] <= bBox2[1][1] + eps);
-                    bool overlap_z = (el[2] >= bBox2[0][2] - eps) && (el[2] <= bBox2[1][2] + eps);
-                    if(!overlap_x || !overlap_y || !overlap_z)
-                    {
-                        flag_pol2 = true;// flag non considerare poligono 1
-                        break;
-                    }
+                    found_polygons.push_back(current_polygon);
+                    continue;
                 }
-
-                if(flag_pol1 == false)
+                else
                 {
-                    polygons1 = subPolygons(polygons.first,
-                                            t.traces_points[f.trace_type[i].first[k]],
-                                            f.trace_type[i].second[k]);
-                    for(auto& el : polygons1.first)
+                    pair<vector<Vector3d>, vector<Vector3d>> polygons;
+
+                    if(t.traces_points[trace_id][0] != t.traces_points[trace_id][1])
                     {
-                        cout << el.transpose() << endl;
+                        polygons = subPolygons(current_polygon, t.traces_points[trace_id], tip);
+                        if (!polygons.first.empty())
+                        {
+                            polygon_queue.push(polygons.first);
+                        }
+                        if (!polygons.second.empty())
+                        {
+                            polygon_queue.push(polygons.second);
+                        }
                     }
-                    cout << endl << endl;
-                    cout << "pol2, frattura " << i << ", traccia " << k << endl;
-                    for(auto& el : polygons1.second)
-                    {
-                        cout << el.transpose() << endl;
-                    }
+
+
                 }
+            } // chiudo ciclo su queue
+        } // chiudo ciclo sulle tracce
 
-                if(flag_pol2 == false)
-                {
-                    polygons2 = subPolygons(polygons.second,
-                                            t.traces_points[f.trace_type[i].first[k]],
-                                            f.trace_type[i].second[k]);
-                    for(auto& el : polygons2.first)
-                    {
-                        cout << el.transpose() << endl;
-                    }
-                    cout << endl << endl;
-                    cout << "pol2, frattura " << i << ", traccia " << k << endl;
-                    for(auto& el : polygons2.second)
-                    {
-                        cout << el.transpose() << endl;
-                    }
-                }
-
-                // da cambiare perché polygons cambia nel ciclo, non mi bastano polygons 1 e 2
-
-            }
-            else
-            {
-                polygons = subPolygons(f.frac_vertices[i],
-                                       t.traces_points[f.trace_type[i].first[k]],
-                                       f.trace_type[i].second[k]);
-                cout << "pol1, frattura " << i << ", traccia " << k << endl;
-                for(auto& el : polygons.first)
-                {
-                    cout << el.transpose() << endl;
-                }
-                cout << endl << endl;
-                cout << "pol2, frattura " << i << ", traccia " << k << endl;
-                for(auto& el : polygons.second)
-                {
-                    cout << el.transpose() << endl;
-                }
-            }
-            // Inizio il taglio dei poligoni
-
-        } // chiudo ciclo sulle tracce di un poligono
-
-
-
-        // calcolo il sottopoligono
-        /*vector<Vector3d> result = extendTraceToEdges(f.frac_vertices[i],
-                                                    t.traces_points[f.trace_type[i].first[0]],
-                                                    f.trace_type[i].second[0]);
-
-        unsigned int index1 = 0;
-        unsigned int index2 = 0;
-        if (result.size() == 6)
+        while(!polygon_queue.empty())
         {
-        auto it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[2]);
-        index1 = distance(f.frac_vertices[i].begin(), it);
-        it = find(f.frac_vertices[i].begin(), f.frac_vertices[i].end(), result[4]);
-        index2 = distance(f.frac_vertices[i].begin(), it);
+            found_polygons.push_back(polygon_queue.front());
+            polygon_queue.pop();
         }
-        else
+
+        // Riempio la struttura dati richiesta
+        /*for(unsigned int i = result.end()->NumberOfCell2Ds; i < found_polygons.size(); i++)
         {
-            return false;
+            auto polygons = found_polygons[i];
+            vector<unsigned int> vec(polygons.size());
+            iota(vec.begin(), vec.end(), mesh.NumberOfCell0Ds);
+
+            // Celle 0D
+            mesh.NumberOfCell0Ds += polygons.size();
+            mesh.IdCell0Ds.insert(mesh.IdCell0Ds.end(), vec.begin(), vec.end());
+            mesh.CoordinatesCell0Ds.insert(mesh.CoordinatesCell0Ds.end(), polygons.begin(), polygons.end());
+
+            // Cell1D
+            mesh.NumberOfCell1Ds += polygons.size();
+            mesh.IdCell1Ds.insert(mesh.IdCell1Ds.end(), vec.begin(), vec.end());
+            mesh.VerticesCell1Ds.push_back(vec);
+
+            mesh.NumberOfVertices.push_back(polygons.size());
+            mesh.NumberOfEdges.push_back(polygons.size());
+
+            // Cell2D
+            mesh.NumberOfCell2Ds += 1;
+            //mesh.IdCell2Ds.insert(mesh.IdCell2Ds.end(), {0, 1});
+            mesh.VerticesCell2Ds.push_back(vec);
+            mesh.EdgesCell2Ds.push_back(vec);
         }
-        //}
-        list<Vector3d> pol1, pol2; // metti vector
-        pol1.push_back(result[1]);
-        pol1.push_back(result[0]);
-        bool newPol = false;
-        for (unsigned int j = 0; j < f.N_vert[i]; j++)
-        {
-            //int pos = (index + j) % f.N_vert[i];
+        result.push_back(mesh);*/
 
 
-            if(newPol == false)
-            {
-                pol1.push_back(f.frac_vertices[i][j]);
-            }
-            else
-            {
-                pol2.push_back(f.frac_vertices[i][j]);
-            }
+    } // chiudo ciclo sui poligoni
 
+    final_pol.N_frac = found_polygons.size();
+    vector<unsigned int> vec(found_polygons.size());
+    iota(vec.begin(), vec.end(), found_polygons.size());
 
-            if (j == index1)
-                newPol = true;
-
-            if (j == index2)
-                newPol = false;
-        }
-        pol2.push_back(result[1]);
-        pol2.push_back(result[0]);
-        cout << endl;
-        cout << "pol1, frattura " << i << endl;
-        for(auto& el : pol1)
-        {
-            cout << el.transpose() << endl;
-        }
-        cout << endl << endl;
-        cout << "pol2, frattura " << i << endl;
-        for(auto& el : pol2)
-        {
-            cout << el.transpose() << endl;
-        }*/
-
+    final_pol.frac_id.insert(final_pol.frac_id.end(), vec.begin(), vec.end());
+    for (auto& pol : found_polygons)
+    {
+        final_pol.N_vert.push_back(pol.size());
     }
+    final_pol.frac_vertices = found_polygons;
+
+
+    // Stampa dei poligoni trovati
+    for (const auto& polygons : found_polygons)
+    {
+        cout << "Poligono risultante:" << endl;
+        for (const auto& el : polygons) {
+            cout << el.transpose() << endl;
+        }
+    }
+
+    printSubPolygons(result);
 
     return true;
 }
 
-// non mi serve fare un'altra funzione, mi basta ciclare fintanto che le tracce sono passanti per tutti i poligoni e sottopoligoni
+
 
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,
@@ -1093,8 +1131,7 @@ pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertic
     //}
     // al posto di questo lanciare eccezione
     vector<Vector3d> pol1, pol2;
-    pol1.push_back(result[1]);
-    pol1.push_back(result[0]);
+
     bool newPol = false;
     for (unsigned int j = 0; j < frac_vertices.size(); j++)
     {
@@ -1109,14 +1146,60 @@ pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertic
 
 
         if (j == index1)
+        {
             newPol = true;
+            pol1.push_back(result[0]);
+            pol1.push_back(result[1]);
+        }
 
         if (j == index2)
+        {
             newPol = false;
+            pol2.push_back(result[1]);
+            pol2.push_back(result[0]);
+        }
     }
-    pol2.push_back(result[1]);
-    pol2.push_back(result[0]);
 
     return make_pair(pol1, pol2);
 }
 
+void printSubPolygons(vector<PolygonalMesh>& sub_polygons)
+{
+    for (size_t i = 0; i < sub_polygons.size(); ++i)
+    {
+        cout << "PolygonalMesh " << i << ":\n";
+        const auto& mesh = sub_polygons[i];
+
+        cout << "NumberOfCell0Ds: " << mesh.NumberOfCell0Ds << "\n";
+        cout << "CoordinatesCell0Ds:\n";
+        for (auto coord : mesh.CoordinatesCell0Ds) {
+            cout << coord.transpose() << "\n";
+        }
+
+        cout << "NumberOfCell1Ds: " << mesh.NumberOfCell1Ds << "\n";
+        cout << "VerticesCell1Ds:\n";
+        for (auto& edge : mesh.VerticesCell1Ds) {
+            for (auto& e : edge)
+                cout << e << " ";
+        }
+
+        cout << "NumberOfCell2Ds: " << mesh.NumberOfCell2Ds << "\n";
+        cout << "VerticesCell2Ds:\n";
+        for (auto& vertices : mesh.VerticesCell2Ds) {
+            for (auto& v : vertices) {
+                cout << v << " ";
+            }
+            cout << "\n";
+        }
+
+        cout << "EdgesCell2Ds:\n";
+        for (auto& edges : mesh.EdgesCell2Ds) {
+            for (auto& e : edges) {
+                cout << e << " ";
+            }
+            cout << "\n";
+        }
+
+        cout << "\n";
+    }
+}
