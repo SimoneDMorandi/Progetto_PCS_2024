@@ -276,8 +276,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                 }
 
                 // Caso di traccia passante per la prima e per la seconda frattura.
-                if( count == 4 && ((points[1]-points[3]).lpNorm<1>() < tau && (points[0]-points[2]).lpNorm<1>() < tau)
-                     ||((points[1]-points[2]).lpNorm<1>() < tau && (points[0]-points[3]).lpNorm<1>() < tau))
+                if( (count == 4) &&( ((points[1]-points[3]).lpNorm<1>() < tau && (points[0]-points[2]).lpNorm<1>() < tau)
+                                     ||((points[1]-points[2]).lpNorm<1>() < tau && (points[0]-points[3]).lpNorm<1>() < tau)))
                 {
                     // Completo la struttura TRACES.
                     traces_list.traces_id.push_back(count_traces);
@@ -308,7 +308,32 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                             return a.z() < b.z();
                     });
 
-                    if((points[2]-points[1]).lpNorm<1>() > eps)
+                    // Controllo che i punti trovati siano all'interno dei bounding box di entrambi i poligoni
+
+                    // Point 1 dentro il primo bounding box
+                    bool overLap_x1_1 = Bbox_1[0][0] - points[1][0] <= eps && points[1][0]-Bbox_1[1][0] <= eps;
+                    bool overLap_y1_1 = Bbox_1[0][1] - points[1][1] <= eps && points[1][1]-Bbox_1[1][1] <= eps;
+                    bool overLap_z1_1 = Bbox_1[0][2] - points[1][2] <= eps && points[1][2]-Bbox_1[1][2] <= eps;
+
+                    // Point 1 dentro il secondo bounding box
+                    bool overLap_x1_2 = Bbox_2[0][0] - points[1][0] <= eps && points[1][0]-Bbox_2[1][0] <= eps;
+                    bool overLap_y1_2 = Bbox_2[0][1] - points[1][1] <= eps && points[1][1]-Bbox_2[1][1] <= eps;
+                    bool overLap_z1_2 = Bbox_2[0][2] - points[1][2] <= eps && points[1][2]-Bbox_2[1][2] <= eps;
+
+                    // Point 2 dentro il primo bounding box
+                    bool overLap_x2_1 = Bbox_1[0][0] - points[2][0] <= eps && points[2][0]-Bbox_1[1][0] <= eps;
+                    bool overLap_y2_1 = Bbox_1[0][1] - points[2][1] <= eps && points[2][1]-Bbox_1[1][1] <= eps;
+                    bool overLap_z2_1 = Bbox_1[0][2] - points[2][2] <= eps && points[2][2]-Bbox_1[1][2] <= eps;
+
+                    // Point 2 dentro il secondo bounding box
+                    bool overLap_x2_2 = Bbox_2[0][0] - points[2][0] <= eps && points[2][0]-Bbox_2[1][0] <= eps;
+                    bool overLap_y2_2 = Bbox_2[0][1] - points[2][1] <= eps && points[2][1]-Bbox_2[1][1] <= eps;
+                    bool overLap_z2_2 = Bbox_2[0][2] - points[2][2] <= eps && points[2][2]-Bbox_2[1][2] <= eps;
+
+                    if((points[2]-points[1]).lpNorm<1>() > eps &&
+                        overLap_x1_1 && overLap_x2_1 && overLap_y1_1 && overLap_y2_1 && overLap_z1_1 &&
+                        overLap_z2_1 && overLap_x1_2 && overLap_x2_2 && overLap_y1_2 && overLap_y2_2 &&
+                        overLap_z1_2 && overLap_z2_2)
                     {
                         // Completo la struttura TRACES
                         traces_list.traces_id.push_back(count_traces);
@@ -736,6 +761,71 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
 
 // Paraview
 
+void Export_Paraview(Fractures &f, Traces &t)
+{
+    // Uncut polygons
+    int N = 0;
+    for (const auto& vec : f.frac_vertices) {
+        N += vec.size();
+    }
+
+    MatrixXd points_p(3,N);
+    int col = 0;
+    for (const auto& vec : f.frac_vertices) {
+        for (const auto& point : vec) {
+            points_p(0, col) = point.x();
+            points_p(1, col) = point.y();
+            points_p(2, col) = point.z();
+            ++col;
+        }
+    }
+
+    vector<vector<unsigned int >> polygon_vertices;
+    int start_index = 0;
+    for (unsigned int n : f.N_vert)
+    {
+        vector<unsigned int> polygon_ids;
+        for (unsigned int i = 0; i < n; ++i)
+        {
+            polygon_ids.push_back(start_index + i);
+        }
+        polygon_vertices.push_back(polygon_ids);
+        start_index += n;
+    }
+
+    vector<UCDProperty<double>> points_properties;
+    vector<UCDProperty<double>> polygons_properties;
+    VectorXi material_p(polygon_vertices.size());
+    for (int i = 0; i < material_p.size(); ++i) {
+        material_p(i) = i;
+    }
+    Gedim::UCDUtilities UCD;
+    UCD.ExportPolygons("polygons_paraview.inp", points_p, polygon_vertices, points_properties, polygons_properties, material_p);
+
+    // Traces
+
+    size_t numColumns = t.traces_points.size() * 2;
+    MatrixXd points_t(3, numColumns);
+    for (size_t i = 0; i < t.traces_points.size(); ++i)
+    {
+        points_t.col(i * 2) = t.traces_points[i][0];
+        points_t.col(i * 2 + 1) = t.traces_points[i][1];
+    }
+
+    size_t n = t.traces_points.size();
+    MatrixXi index_edges(2, n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        index_edges(0, i) = i * 2;
+        index_edges(1, i) = i * 2 + 1;
+    }
+    VectorXi material_t(n);
+    for (int i = 0; i < n; ++i) {
+        material_t(i) = i;
+    }
+    UCD.ExportSegments("traces.inp",points_t,index_edges,points_properties, polygons_properties, material_t);
+}
+
 void Export_Paraview(Fractures &f)
 {
     int N = 0;
@@ -772,44 +862,6 @@ void Export_Paraview(Fractures &f)
     UCD.ExportPoints("points_paraview.inp",points,points_properties,material);
     UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
 }
-
-/*void Export_Paraview(vector<vector<Vector3d>>& found_polygons)
-{
-    int N = 0;
-    for (const auto& vec : found_polygons) {
-        N += vec.size();
-    }
-
-    MatrixXd points(3,N); // OK
-    int col = 0;
-    for (const auto& vec : found_polygons) {
-        for (const auto& point : vec) {
-            points(0, col) = point.x();
-            points(1, col) = point.y();
-            points(2, col) = point.z();
-            ++col;
-        }
-    }
-
-    vector<vector<unsigned int >> polygon_vertices; // OK
-    int start_index = 0;
-    for (unsigned int n = 0; n < 28; n++) {
-        vector<unsigned int> polygon_ids;
-        for (unsigned int i = 0; i < n; ++i) {
-            polygon_ids.push_back(start_index + i);
-        }
-        polygon_vertices.push_back(polygon_ids);
-        start_index += n;
-    }
-
-
-
-    vector<UCDProperty<double>> points_properties;
-    vector<UCDProperty<double>> polygons_properties;
-    VectorXi material;
-    Gedim::UCDUtilities UCD;
-    UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
-}*/
 
 ////////////////////////////////////////////////////////////////////////////////////
 // PARTE 2

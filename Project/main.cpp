@@ -49,6 +49,8 @@ int main()
         return 1;
     }
 
+    //Export_Paraview(fractures_list,traces_list);
+
     Fractures found_polygons;
     bool result_cut = cutPolygons(fractures_list,traces_list, found_polygons);
     if(!result_cut)
