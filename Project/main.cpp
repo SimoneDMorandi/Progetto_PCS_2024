@@ -22,7 +22,7 @@ int main()
     cout << scientific << endl;
 
     // Lettura del file.
-    string path = "./DATA/FR3_data.txt";
+    string path = "./DATA/FR200_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
@@ -51,7 +51,7 @@ int main()
 
     //Export_Paraview(fractures_list,traces_list);
 
-    Fractures found_polygons;
+    vector<vector<Vector3d>> found_polygons;
     bool result_cut = cutPolygons(fractures_list,traces_list, found_polygons);
     if(!result_cut)
     {

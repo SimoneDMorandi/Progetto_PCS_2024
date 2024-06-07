@@ -115,7 +115,8 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
     unsigned int count_traces = 0;
 
     // Definisco la precisione di macchina.
-    double eps = numeric_limits<decltype(eps)>::epsilon(); // Precisione 1D
+    //double eps = numeric_limits<decltype(eps)>::epsilon(); // Precisione 1D
+    double eps = 1e-15;
     double tau = 1e-12; // Precisione 2D
 
     // Prendo ogni singola frattura e calcolo il Bounding Box.
@@ -515,7 +516,8 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 // Funzione che calcola il piano passante per un poligono.
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3)
 {
-    double eps = numeric_limits<decltype(eps)>::epsilon();
+    //double eps = numeric_limits<decltype(eps)>::epsilon();
+    double eps = 1e-15;
     Vector3d AB = v2-v1;
     Vector3d AC = v3-v1;
     Vector3d n1 = AB.cross(AC); // Vettore normale al piano.
@@ -826,16 +828,15 @@ void Export_Paraview(Fractures &f, Traces &t)
     UCD.ExportSegments("traces.inp",points_t,index_edges,points_properties, polygons_properties, material_t);
 }
 
-void Export_Paraview(Fractures &f)
-{
+void Export_Paraview(vector<vector<Vector3d>>& subPolygons) {
     int N = 0;
-    for (const auto& vec : f.frac_vertices) {
+    for (const auto& vec : subPolygons) {
         N += vec.size();
     }
 
-    MatrixXd points(3,N); // OK
+    MatrixXd points(3, N);
     int col = 0;
-    for (const auto& vec : f.frac_vertices) {
+    for (const auto& vec : subPolygons) {
         for (const auto& point : vec) {
             points(0, col) = point.x();
             points(1, col) = point.y();
@@ -844,22 +845,31 @@ void Export_Paraview(Fractures &f)
         }
     }
 
-    vector<vector<unsigned int >> polygon_vertices; // OK
+    vector<vector<unsigned int>> polygon_vertices;
+    VectorXi material(N);
     int start_index = 0;
-    for (unsigned int n : f.N_vert) {
-        vector<unsigned int> polygon_ids;
-        for (unsigned int i = 0; i < n; ++i) {
-            polygon_ids.push_back(start_index + i);
+
+    for (const auto& el : subPolygons) {
+        //vector<unsigned int> polygon_ids;
+        int base_index = start_index;
+        for (unsigned int i = 0; i < el.size() - 2; ++i) {
+            // Aggiungi triangoli nel formato {base_index, base_index + i + 1, base_index + i + 2}
+            polygon_vertices.push_back({base_index, base_index + i + 1, base_index + i + 2});
         }
-        polygon_vertices.push_back(polygon_ids);
-        start_index += n;
+        // Tutti i vertici di questo poligono ricevono lo stesso materiale (start_index)
+        for (int j = 0; j < el.size(); ++j) {
+            //material(start_index + j);
+            for (unsigned int k = 0; k < el.size(); k++)
+                material(k) = start_index; // [ start_index start_index ...]
+        }
+        start_index += el.size();
     }
 
     vector<UCDProperty<double>> points_properties;
     vector<UCDProperty<double>> polygons_properties;
-    VectorXi material;
+
     Gedim::UCDUtilities UCD;
-    UCD.ExportPoints("points_paraview.inp",points,points_properties,material);
+    UCD.ExportPoints("points_paraview.inp", points, points_properties, material);
     UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
 }
 
@@ -878,7 +888,7 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
     result.reserve(6);
     result.push_back(traces_points[0]);
     result.push_back(traces_points[1]);
-    double eps = 1e-9;
+    double eps = 1e-15;
 
     unsigned int count = 0;
 
@@ -953,25 +963,24 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices,
             continue;
         }
     }
-    /*cout << "vettore result" << endl;
-    for(auto& el : result) {
-        cout << el.transpose() << endl;
-    }*/
     return result;
 }
 
-bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
+//bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
+bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygons)
 {
     vector<PolygonalMesh> result;
-    vector<vector<Vector3d>> found_polygons;
-    double eps = 1e-9;
+    //vector<vector<Vector3d>> found_polygons;
+    double eps = 1e-15;
 
     for (unsigned int i = 0; i < f.N_frac; i++)
     {
-        PolygonalMesh mesh;
         // Inizializza la coda con il poligono iniziale
         queue<vector<Vector3d>> polygon_queue;
-        polygon_queue.push(f.frac_vertices[i]);
+        if(!f.trace_type[i].first.empty())
+            polygon_queue.push(f.frac_vertices[i]);
+        else
+            continue;
 
         for (unsigned int k = 0; k < f.trace_type[i].first.size(); k++)
         {
@@ -1002,9 +1011,9 @@ bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
                     if(count == 3)
                         flag++;
                 }
+
                 // Controllo che la traccia sia interna al poligono
                 vector<Vector3d> bBox1 = Calculate_Bounding_Box(current_polygon);
-
                 for (auto& el : t.traces_points[trace_id])
                 {
                     bool overlap_x = (el[0] >= bBox1[0][0] - eps) && (el[0] <= bBox1[1][0] + eps);
@@ -1016,9 +1025,13 @@ bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
                         break;
                     }
                 }
+
                 if (flag >= 1)
                 {
-                    found_polygons.push_back(current_polygon);
+                    if (current_polygon.size() >= 3)  // Aggiungi solo se il poligono ha almeno tre lati
+                    {
+                        found_polygons.push_back(current_polygon);
+                    }
                     continue;
                 }
                 else
@@ -1045,42 +1058,16 @@ bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
 
         while(!polygon_queue.empty())
         {
-            found_polygons.push_back(polygon_queue.front());
+            vector<Vector3d> current_polygon = polygon_queue.front();
             polygon_queue.pop();
+            if (current_polygon.size() >= 3)  // Aggiungi solo se il poligono ha almeno tre lati
+            {
+                found_polygons.push_back(current_polygon);
+            }
         }
-
-        // Riempio la struttura dati richiesta
-        /*for(unsigned int i = result.end()->NumberOfCell2Ds; i < found_polygons.size(); i++)
-        {
-            auto polygons = found_polygons[i];
-            vector<unsigned int> vec(polygons.size());
-            iota(vec.begin(), vec.end(), mesh.NumberOfCell0Ds);
-
-            // Celle 0D
-            mesh.NumberOfCell0Ds += polygons.size();
-            mesh.IdCell0Ds.insert(mesh.IdCell0Ds.end(), vec.begin(), vec.end());
-            mesh.CoordinatesCell0Ds.insert(mesh.CoordinatesCell0Ds.end(), polygons.begin(), polygons.end());
-
-            // Cell1D
-            mesh.NumberOfCell1Ds += polygons.size();
-            mesh.IdCell1Ds.insert(mesh.IdCell1Ds.end(), vec.begin(), vec.end());
-            mesh.VerticesCell1Ds.push_back(vec);
-
-            mesh.NumberOfVertices.push_back(polygons.size());
-            mesh.NumberOfEdges.push_back(polygons.size());
-
-            // Cell2D
-            mesh.NumberOfCell2Ds += 1;
-            //mesh.IdCell2Ds.insert(mesh.IdCell2Ds.end(), {0, 1});
-            mesh.VerticesCell2Ds.push_back(vec);
-            mesh.EdgesCell2Ds.push_back(vec);
-        }
-        result.push_back(mesh);*/
-
-
     } // chiudo ciclo sui poligoni
 
-    final_pol.N_frac = found_polygons.size();
+    /*final_pol.N_frac = found_polygons.size();
     vector<unsigned int> vec(found_polygons.size());
     iota(vec.begin(), vec.end(), found_polygons.size());
 
@@ -1089,7 +1076,7 @@ bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
     {
         final_pol.N_vert.push_back(pol.size());
     }
-    final_pol.frac_vertices = found_polygons;
+    final_pol.frac_vertices = found_polygons;*/
 
 
     // Stampa dei poligoni trovati
@@ -1101,10 +1088,46 @@ bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
         }
     }
 
-    printSubPolygons(result);
+    cout << found_polygons.size()<< endl;
+
+    // Riempio la struttura dati richiesta-> RIVEDERE GLI ID 0D PERCHE' SONO SBAGLIATI
+    for(unsigned int i = 0; i < found_polygons.size(); i++)
+    {
+        PolygonalMesh mesh;
+        auto polygons = found_polygons[i];
+        vector<unsigned int> vec(polygons.size());
+        if(i!=0)
+            iota(vec.begin(), vec.end(), result[i-1].IdCell0Ds.back()+1);
+        else
+            iota(vec.begin(), vec.end(), 0);
+
+        // Celle 0D
+        mesh.NumberOfCell0Ds += polygons.size();
+        mesh.IdCell0Ds.insert(mesh.IdCell0Ds.end(), vec.begin(), vec.end());
+        mesh.CoordinatesCell0Ds.insert(mesh.CoordinatesCell0Ds.end(), polygons.begin(), polygons.end());
+
+        // Cell1D
+        mesh.NumberOfCell1Ds += polygons.size();
+        mesh.IdCell1Ds.insert(mesh.IdCell1Ds.end(), vec.begin(), vec.end());
+        mesh.VerticesCell1Ds.push_back(vec);
+
+        mesh.NumberOfVertices.push_back(polygons.size());
+        mesh.NumberOfEdges.push_back(polygons.size());
+
+        // Cell2D
+        mesh.NumberOfCell2Ds += 1;
+        //mesh.IdCell2Ds.insert(mesh.IdCell2Ds.end(), {0, 1});
+        mesh.VerticesCell2Ds.push_back(vec);
+        mesh.EdgesCell2Ds.push_back(vec);
+
+        result.push_back(mesh);
+    }
+
+    ////printSubPolygons(result);
 
     return true;
 }
+
 
 
 
