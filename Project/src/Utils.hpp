@@ -28,7 +28,7 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2);
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3);
 
 // Funzione che verifica se la traccia è passante per una frattura, data la retta del lato e un punto.
-bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point, const double &tau);
+bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point);
 
 // Funzione che esporta le informazioni delle tracce.
 bool Export_traces_Info(Traces& traces_list);
@@ -46,7 +46,8 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2);
 // Paraview parte 1
 void Export_Paraview(Fractures& f, Traces& t);
 void Export_Paraview(Fractures& f);
-void Export_Paraview(vector<vector<Vector3d> > &found_polygons);
+void Export_Paraview(vector<vector<Vector3d> > &subPolygons);
+
 
 
 
@@ -58,7 +59,8 @@ void Export_Paraview(vector<vector<Vector3d> > &found_polygons);
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points);
 
 // Funzioni che tagliano i poligoni
-bool cutPolygons(Fractures& f, Traces &t, Fractures &final_pol);
+//bool cutPolygons(Fractures& f, Traces &t, Fractures &final_pol);
+bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygons);
 
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,

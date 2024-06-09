@@ -15,7 +15,7 @@ using vec2 = vector<Vector3d>;
 using vec3 = vector<vector<Vector3d>>;
 
 //double eps = numeric_limits<decltype(eps)>::epsilon();
-double eps = 1e-10;
+//double eps = 1e-10;
 
 // Custom function to compare two Vector3d objects with tolerance
 bool Near(const Vector3d& a, const Vector3d& b, double eps) {
@@ -265,10 +265,10 @@ TEST(check_pass, ValidCheck)
     Vector4d pi2 = {0.0, 0.0, 1.0, 0.0};
     Vector3d point = {0.8, 0.0, 0.0};
 
-    ASSERT_TRUE(check_pass(pi1, pi2, point, eps));
+    ASSERT_TRUE(check_pass(pi1, pi2, point));
 
     point = {1, 1, 0};
-    ASSERT_FALSE(check_pass(pi1, pi2, point, eps));
+    ASSERT_FALSE(check_pass(pi1, pi2, point));
 
     /*Vector4d pi3 = {0, -0.5, 0, 0.25};
     point = {0, 0.5, 0};
