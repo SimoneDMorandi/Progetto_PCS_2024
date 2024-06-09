@@ -17,19 +17,13 @@ int main()
     Fractures fractures_list;
     Traces traces_list;
 
-    // Impostazione precisione dei dati in uscita.
-    cout.precision(16);
-    cout << scientific << endl;
-
     // Lettura del file.
-    string path = "./DATA/FR3_data.txt";
+    string path = "./DATA/FR362_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
     }
     cout << "Fratture importate correttamente." << endl;
-
-    //Export_Paraview(fractures_list);
 
     // Calcolo delle tracce
     Find_Traces(fractures_list, traces_list);
@@ -42,22 +36,30 @@ int main()
     }
     cout << "Tracce esportate correttamente." << endl;
 
+    // Esportazione tipologia di tracce.
     Sort_Traces_Type(fractures_list,traces_list);
     bool result_type = Export_traces_Type(fractures_list,traces_list);
     if(!result_type)
     {
         return 1;
     }
+    cout << "Tipologie di tracce eesportate correttamente.";
 
-    //Export_Paraview(fractures_list,traces_list);
+    // Esportazione delle fratture e delle tracce su paraview.
+    Export_Paraview(fractures_list,traces_list);
 
+    // PARTE 2.
+
+    // Taglio dei poligoni rispetto alla tracce ordinate.
     vector<vector<Vector3d>> found_polygons;
     bool result_cut = cutPolygons(fractures_list,traces_list, found_polygons);
     if(!result_cut)
     {
         return 1;
     }
+    cout << "Sottopoligoni esportati correttamente";
 
+    // Esportazione dei sottopoligoni triangolati.
     Export_Paraview(found_polygons);
 
     return 0;

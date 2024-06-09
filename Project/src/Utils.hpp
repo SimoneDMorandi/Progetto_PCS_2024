@@ -4,7 +4,6 @@
 #include<string>
 #include<vector>
 #include "Structures.hpp"
-#include <cassert> // MergeSort
 
 using namespace std;
 
@@ -43,28 +42,25 @@ void Sort_Traces_Type(Fractures& f, Traces& t);
 template<typename T>
 void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2);
 
-// Paraview parte 1
+// Paraview parte 1.
 void Export_Paraview(Fractures& f, Traces& t);
-void Export_Paraview(Fractures& f);
-void Export_Paraview(vector<vector<Vector3d> > &subPolygons);
-
-
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Parte 2
+//Parte 2.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Funzione che prolunga una traccia fino ad incontrare i lati della frattura
+// Funzione che prolunga una traccia fino ad incontrare i lati della frattura.
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points);
 
-// Funzioni che tagliano i poligoni
-//bool cutPolygons(Fractures& f, Traces &t, Fractures &final_pol);
+// Funzioni che tagliano i poligoni.
 bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygons);
 
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,
                                                      unsigned int tip);
 
+// Paraview parte 2.
+void Export_Paraview(vector<vector<Vector3d> > &subPolygons);
+
 // Funzione di stampa della struttura dati per verifica, da eliminare poi
-void printSubPolygons(vector<PolygonalMesh> &sub_polygons);
+//void printSubPolygons(vector<PolygonalMesh> &sub_polygons);

@@ -31,7 +31,7 @@ double tau = 1e-12;
 /////////////////////////////////////////////////////////////////////////////////////
 
 // Funzione di lettura del file delle tracce.
-bool importFractures(const string& path, Fractures &fractures_list) //OK.
+bool importFractures(const string& path, Fractures &fractures_list)
 {
     ifstream file;
     file.open(path);
@@ -215,8 +215,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     {
                         continue;
                     }
-                } // Se due punti uguali, considerane solo uno
-                // se i due punti stanno sulla stessa retta, ignora entrambi
+                }
                 // Ricavo segmento della frattura 2: intersezione tra la retta contenente la traccia e due suoi lati.
                 for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
                 {
@@ -295,14 +294,12 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                     count_traces++;
                 }
 
-                // Caso di traccia non passante per almeno una frattura
-                 /* Calcolo del segmento corrispondente alla traccia, avendo i 4 punti [A,C//B,D]
-                 Visualmente, se ho [A,C] e [B,C] tutti sulla stessa retta, i primi appartenenti alla traccia
-                 1 e gli altri alla traccia 2, se calcolo il minimo tra gli inizi trovo l'inizio della traccia
-                  e calcolando il massimo tra le code trovo la fine della traccia, rappresentata da [Start,Finish]*/
+                // Caso di traccia non passante per almeno una frattura.
+                // Ordino i punti trovati in base all'ascissa curvilinea e prendo i due punti centrali.
+                // Così facendo trovo la differenza dei segmenti composti dai punti della frattura 1 e da quelli della frattura 2.
                 else if (count == 4)
                 {
-                    unsigned int epsilon = 1e-14; // ho modificato perché sort non prende variabili globali
+                    unsigned int epsilon = 1e-14;
                     sort(points.begin(),points.end(), [epsilon](const Vector3d& a, const Vector3d& b){
                         if(abs(a.x() -b.x()) > eps)
                             return a.x() < b.x();
@@ -312,24 +309,16 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                             return a.z() < b.z();
                     });
 
-                    // Controllo che i punti trovati siano all'interno dei bounding box di entrambi i poligoni
-
-                    // Point 1 dentro il primo bounding box
+                    // Controllo che i punti trovati siano all'interno dei bounding box di entrambi i poligoni.
                     bool overLap_x1_1 = Bbox_1[0][0] - points[1][0] <= eps && points[1][0]-Bbox_1[1][0] <= eps;
                     bool overLap_y1_1 = Bbox_1[0][1] - points[1][1] <= eps && points[1][1]-Bbox_1[1][1] <= eps;
                     bool overLap_z1_1 = Bbox_1[0][2] - points[1][2] <= eps && points[1][2]-Bbox_1[1][2] <= eps;
-
-                    // Point 1 dentro il secondo bounding box
                     bool overLap_x1_2 = Bbox_2[0][0] - points[1][0] <= eps && points[1][0]-Bbox_2[1][0] <= eps;
                     bool overLap_y1_2 = Bbox_2[0][1] - points[1][1] <= eps && points[1][1]-Bbox_2[1][1] <= eps;
                     bool overLap_z1_2 = Bbox_2[0][2] - points[1][2] <= eps && points[1][2]-Bbox_2[1][2] <= eps;
-
-                    // Point 2 dentro il primo bounding box
                     bool overLap_x2_1 = Bbox_1[0][0] - points[2][0] <= eps && points[2][0]-Bbox_1[1][0] <= eps;
                     bool overLap_y2_1 = Bbox_1[0][1] - points[2][1] <= eps && points[2][1]-Bbox_1[1][1] <= eps;
                     bool overLap_z2_1 = Bbox_1[0][2] - points[2][2] <= eps && points[2][2]-Bbox_1[1][2] <= eps;
-
-                    // Point 2 dentro il secondo bounding box
                     bool overLap_x2_2 = Bbox_2[0][0] - points[2][0] <= eps && points[2][0]-Bbox_2[1][0] <= eps;
                     bool overLap_y2_2 = Bbox_2[0][1] - points[2][1] <= eps && points[2][1]-Bbox_2[1][1] <= eps;
                     bool overLap_z2_2 = Bbox_2[0][2] - points[2][2] <= eps && points[2][2]-Bbox_2[1][2] <= eps;
@@ -346,7 +335,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         traces_list.traces_gen.push_back({i,j});
 
                         // Controllo se la traccia è passante per almeno una frattura.
-                        // Prima frattura
+                        // Prima frattura.
                         unsigned int count_pass = 0;
                         for (unsigned int k = 0; k < fractures_list.N_vert[i]; k++)
                         {
@@ -455,7 +444,6 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
 Funzione che calcola la forma parametrica di una retta e la trasforma in cartesiana.
 Prende in input 2 punti e restituisce due vettori 4x1 che identificano la retta mediante il seguente calcolo
 (x-x0)/a  = (y-y0)/b e (x-x0)/a  = (z-z0)/c dove (a,b,c) coincide con la direzione della retta.
-I piani vanno definiti fuori dalla funzione in modo da poter essere restituiti in modo corretto.
 */
 pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 {
@@ -465,7 +453,7 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
     }
     Vector4d pi1, pi2, pi3;
 
-    Vector3d n = v1-v2; // Direzione retta, retta: v1+t*n (P0+t*n, n reale)
+    Vector3d n = v1-v2; // Direzione retta, retta: v1+t*n (P0+t*n, n reale).
 
     // Converto in forma cartesiana.
     pi1[0] = n[1];
@@ -499,8 +487,6 @@ pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 // Funzione che calcola il piano passante per un poligono.
 Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3)
 {
-    //double eps = numeric_limits<decltype(eps)>::epsilon();
-    //double eps = 1e-15;
     Vector3d AB = v2-v1;
     Vector3d AC = v3-v1;
     Vector3d n1 = AB.cross(AC); // Vettore normale al piano.
@@ -537,7 +523,6 @@ bool Export_traces_Info(Traces& t)
     }
     of << "# Number of Traces" << "\n";
     of << t.traces_id.size() << "\n";
-    //of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
     for(unsigned int i = 0; i < t.traces_id.size(); i++)
     {
         of << "# TraceId; FractureId1; Fracture Id2; X1; Y1; Z1; X2; Y2; Z2 \n";
@@ -630,30 +615,29 @@ vector<Vector3d> Calculate_Bounding_Box(vector<Vector3d>& polygon)
 
 /////////////////////////////////
 
-// Funzione di ordinamento della struttura salvavita.
+// Funzione di ordinamento di trace_type.
 void Sort_Traces_Type(Fractures& f, Traces &t)
 {
     for(auto& fracture_pair : f.trace_type)
     {
-        // Evito il calcolo se il vettore ha un solo elemento
+        // Evito il calcolo se il vettore ha un solo elemento.
         if(fracture_pair.first.size() == 1 || fracture_pair.first.size() == 0 )
         {
             continue;
         }
-        // Evito il calcolo se il vettore ha una sola traccia passante e una non passante
+        // Evito il calcolo se il vettore ha una sola traccia passante e una non passante.
         if(fracture_pair.second.size() == 2 && fracture_pair.second[0] == 0 &&
             fracture_pair.second[1] == 1)
         {
             continue;
         }
-        // Vettori di prova
         // Ordino in base a passante e non passante.
         if (!is_sorted(fracture_pair.second.begin(), fracture_pair.second.end()))
         {
             sort_pair(fracture_pair.second,fracture_pair.first);
         }
 
-        // Ricavo l'indice i di ultima traccia passante con ricerca binaria
+        // Ricavo l'indice i di ultima traccia passante con ricerca binaria.
         int left = 0;
         int right = fracture_pair.second.size() - 1;
         int lastZeroIndex = -1;
@@ -669,7 +653,7 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
                 right = mid - 1;
             }
         }
-        if(lastZeroIndex == -1 || lastZeroIndex == fracture_pair.first.size()) // Tutte 0 o tutte 1
+        if(lastZeroIndex == -1 || lastZeroIndex == fracture_pair.first.size()) // Tutte 0 o tutte 1.
         {
             // Creo il vettore delle lunghezze per poter ordinare gli ID.
             vector<double> lengths;
@@ -678,7 +662,6 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
             {
                 lengths.push_back(t.traces_length[el]);
             }
-            //vector<double> vettore temporaneo delle lunghezze
             if (!is_sorted(lengths.begin(), lengths.end()))
             {
                 sort_pair(lengths,fracture_pair.first);
@@ -716,6 +699,8 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
     }
 }
 
+/////////////////////////////////
+
 template<typename T>
 // Funzione che ordina vec1 fino all'index e applica gli scambi a vec2
 void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
@@ -741,14 +726,12 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
     vec2 = move(sorted_vec2);
 }
 
+/////////////////////////////////
 
-
-
-// Paraview
-
+// Paraview parte 1.
+// La funzione esporta i punti delle fratture iniziali e quelli delle loro tracce.
 void Export_Paraview(Fractures &f, Traces &t)
 {
-    // Uncut polygons
     int N = 0;
     for (const auto& vec : f.frac_vertices) {
         N += vec.size();
@@ -811,57 +794,12 @@ void Export_Paraview(Fractures &f, Traces &t)
     UCD.ExportSegments("traces.inp",points_t,index_edges,points_properties, polygons_properties, material_t);
 }
 
-void Export_Paraview(vector<vector<Vector3d>>& subPolygons) {
-    int N = 0;
-    for (const auto& vec : subPolygons) {
-        N += vec.size();
-    }
-
-    MatrixXd points(3, N);
-    int col = 0;
-    for (const auto& vec : subPolygons) {
-        for (const auto& point : vec) {
-            points(0, col) = point.x();
-            points(1, col) = point.y();
-            points(2, col) = point.z();
-            ++col;
-        }
-    }
-
-    vector<vector<unsigned int>> polygon_vertices;
-    VectorXi material(N);
-    int start_index = 0;
-
-    for (const auto& el : subPolygons) {
-        //vector<unsigned int> polygon_ids;
-        unsigned int base_index = start_index;
-        for (unsigned int i = 0; i < el.size() - 2; ++i) {
-            // Aggiungi triangoli nel formato {base_index, base_index + i + 1, base_index + i + 2}
-            polygon_vertices.push_back({base_index, base_index + i + 1, base_index + i + 2});
-        }
-        // Tutti i vertici di questo poligono ricevono lo stesso materiale (start_index)
-        for (unsigned int j = 0; j < el.size(); ++j) {
-            //material(start_index + j);
-            for (unsigned int k = 0; k < el.size(); k++)
-                material(k) = start_index; // [ start_index start_index ...]
-        }
-        start_index += el.size();
-    }
-
-    vector<UCDProperty<double>> points_properties;
-    vector<UCDProperty<double>> polygons_properties;
-
-    Gedim::UCDUtilities UCD;
-    UCD.ExportPoints("points_paraview.inp", points, points_properties, material);
-    UCD.ExportPolygons("polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
-}
-
 ////////////////////////////////////////////////////////////////////////////////////
 // PARTE 2
 ////////////////////////////////////////////////////////////////////////////////////
 
 // Funzione che prolunga una traccia fino ad incontrare i lati della frattura, inoltre il vettore che restituisce è della forma
-// [inizio traccia, fine traccia, inizio lato, fine lato 1, inizio lato 2, fine lato 2] dove i lati sono quelli che contengono la traccia
+// [inizio traccia, fine traccia, inizio lato, fine lato 1, inizio lato 2, fine lato 2] dove i lati sono quelli che contengono la traccia.
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points, unsigned int & tip)
 {
     pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
@@ -907,7 +845,7 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
         coeff.row(3) <<  ver.second[0], ver.second[1], ver.second[2];
         JacobiSVD<MatrixXd> svd(coeff);
         double cond =svd.singularValues().minCoeff();
-        if (cond > eps) // evita il caso di lati paralleli
+        if (cond > eps) // Evito il caso di lati paralleli.
         {
             if(tip == 0)
             {
@@ -930,7 +868,7 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
                 bool overlap_y = (sol[1] >= bBox[0][1] - eps) && (sol[1] <= bBox[1][1] + eps);
                 bool overlap_z = (sol[2] >= bBox[0][2] - eps) && (sol[2] <= bBox[1][2] + eps);
 
-                if(overlap_x && overlap_y && overlap_z && result.size() < 6) // controllo che il punto sia interno
+                if(overlap_x && overlap_y && overlap_z && result.size() < 6) // Controllo che il punto sia interno.
                 {
                     result[count] = sol;
                     if(result.size() < 6) result.push_back(coor1);
@@ -949,7 +887,8 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
     return result;
 }
 
-// Questa funzione permette di calcolare i sottopoligoni generati dal taglio, in particolare si decide quando inizia e quando finisce il sottopoligono
+// Questa funzione permette di calcolare i sottopoligoni generati dal taglio,
+// in particolare si decide quando inizia e quando finisce il sottopoligono.
 pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
                                                      vector<Vector3d> traces_points,
                                                      unsigned int tip)
@@ -964,13 +903,13 @@ pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertic
     if (result.size() == 6)
     {
         auto it = find(frac_vertices.begin(), frac_vertices.end(), result[2]);
-        index1 = distance(frac_vertices.begin(), it); // posizione inizio lato 1
+        index1 = distance(frac_vertices.begin(), it); // Posizione inizio lato 1.
         it = find(frac_vertices.begin(), frac_vertices.end(), result[4]);
-        index2 = distance(frac_vertices.begin(), it); // posizione inizio lato 2
+        index2 = distance(frac_vertices.begin(), it); // Posizione inizio lato 2.
     }
     else
     {
-        return make_pair(pol1, pol2);; // non lancio eccezioni perché tanto in cutPolygon controllo che non sia vuoto
+        return make_pair(pol1, pol2);;
     }
 
     bool newPol = false;
@@ -985,14 +924,14 @@ pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertic
             pol2.push_back(frac_vertices[j]);
         }
 
-        if (j == index1) // se sono all'inizio del lato 1, nel ciclo successivo costruisco il secondo poligono
+        if (j == index1) // Se sono all'inizio del lato 1, nel ciclo successivo costruisco il secondo poligono.
         {
             newPol = true;
             pol1.push_back(result[0]);
             pol1.push_back(result[1]);
         }
 
-        if (j == index2) // se sono all'inizio del lato 2, nel ciclo successivo finisco la costruzione del primo poligono
+        if (j == index2) // Se sono all'inizio del lato 2, nel ciclo successivo finisco la costruzione del primo poligono.
         {
             newPol = false;
             pol2.push_back(result[1]);
@@ -1003,6 +942,9 @@ pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertic
     return make_pair(pol1, pol2);
 }
 
+/////////////////////////////////
+
+// Funzione ricorsiva che taglia i poligoni secondo la traccia.
 bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygons)
 {
     vector<PolygonalMesh> result;
@@ -1032,11 +974,11 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
 
                 unsigned int flag = 0;
 
-                // Il tip è 1 se considero le tracce successive alla prima
+                // Il tip è 1 se considero le tracce successive alla prima.
                 if(k != 0)
                     tip = 1;
 
-                // Controllo che la traccia non coincida con un lato del poligono
+                // Controllo che la traccia non coincida con un lato del poligono.
                 for(auto& el : current_polygon)
                 {
                     unsigned int count = 0;
@@ -1049,7 +991,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                         flag++;
                 }
 
-                // Controllo che la traccia sia interna al poligono dato che posso avere poligoni tagliati
+                // Controllo che la traccia sia interna al poligono dato che posso avere poligoni tagliati.
                 vector<Vector3d> bBox1 = Calculate_Bounding_Box(current_polygon);
                 for (auto& el : t.traces_points[trace_id])
                 {
@@ -1058,21 +1000,21 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     bool overlap_z = (el[2] >= bBox1[0][2] - eps) && (el[2] <= bBox1[1][2] + eps);
                     if(!overlap_x || !overlap_y || !overlap_z)
                     {
-                        flag = 1; // flag non considerare poligono
+                        flag = 1; // Flag per non considerare il poligono.
                         break;
                     }
                 }
 
                 if (flag >= 1) // se la traccia non è interna
                 {
-                    if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati
+                    if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati.
                     {
                         found_polygons.push_back(current_polygon);
                         counter ++;
                     }
                     continue;
                 }
-                else // se la traccia è interna, posso tagliare il poligono
+                else // Se la traccia è interna, posso tagliare il poligono.
                 {
                     pair<vector<Vector3d>, vector<Vector3d>> polygons;
 
@@ -1091,14 +1033,14 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
 
 
                 }
-            } // chiudo ciclo su queue
-        } // chiudo ciclo sulle tracce
+            } // Chiusura del ciclo su queue.
+        } // Chiusura del ciclo sulle tracce.
 
         while(!polygon_queue.empty())
         {
             vector<Vector3d> current_polygon = polygon_queue.front();
             polygon_queue.pop();
-            if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati
+            if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati.
             {
                 found_polygons.push_back(current_polygon);
                 counter ++;
@@ -1107,7 +1049,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
 
         number_of_sp.push_back(counter);
 
-    } // chiudo ciclo sui poligoni
+    } //Chiusura del ciclo sui poligoni.
 
     // Stampa dei poligoni trovati  DA TOGLIERE, SOLO PER TEST
     unsigned int start_index = 0;
@@ -1132,7 +1074,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
 
     cout << found_polygons.size()<< endl;
 
-    // Riempio la struttura dati richiesta
+    // Riempio la struttura dati richiesta.
     start_index = 0;
     end_index = number_of_sp[0];
     for (unsigned int m = 0; m < f.N_frac; m++)
@@ -1144,14 +1086,14 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
             end_index += number_of_sp[m];
         }
 
-        vector<Vector3d> map0D; // coordinate celle 0D
-        vector<pair<unsigned int, unsigned int>> map1D; // id celle 0D che delimitano i lati
-        vector<unsigned int> id0; // id lati vertici
-        vector<unsigned int> id1; // id lati
+        vector<Vector3d> map0D; // Coordinate celle 0D.
+        vector<pair<unsigned int, unsigned int>> map1D; // Id celle 0D che delimitano i lati.
+        vector<unsigned int> id0; // Id lati vertici.
+        vector<unsigned int> id1; // Id lati.
         unsigned int counterID0 = 0;
         unsigned int counterID1 = 0;
 
-        // mi riservo lo spazio, anche sovrastimando
+        // Riservo lo spazio, anche sovrastimando.
         map0D.reserve(3 * found_polygons.size());
         map1D.reserve(3 * found_polygons.size());
         id0.reserve(3 * found_polygons.size());
@@ -1165,13 +1107,13 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
             tempVert.reserve(polygons.size());
             tempEdge.reserve(polygons.size());
 
-            // Elaborazione delle celle 0D e 1D
+            // Elaborazione delle celle 0D e 1D.
             for (unsigned int j = 0; j < polygons.size(); j++)
             {
                 Vector3d current = polygons[j];
-                Vector3d next = polygons[(j + 1) % polygons.size()]; // gestisco correttamente l'ultimo elemento
+                Vector3d next = polygons[(j + 1) % polygons.size()]; // Gestisco correttamente l'ultimo elemento.
 
-                // celle 0D
+                // Celle 0D.
                 auto it = find(map0D.begin(), map0D.end(), current);
                 if (it == map0D.end())
                 {
@@ -1188,11 +1130,11 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     counterID0 ++;
                 }
 
-                // ID delle coordinate
+                // ID delle coordinate.
                 unsigned int idCurrent = distance(map0D.begin(), find(map0D.begin(), map0D.end(), current));
                 unsigned int idNext = distance(map0D.begin(), find(map0D.begin(), map0D.end(), next));
 
-                // celle 1D
+                // Celle 1D.
                 auto it2 = find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
                     return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
                 });
@@ -1202,10 +1144,13 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     id1.push_back(counterID1);
                     counterID1 ++;
                 }
-                // ID latti
-                unsigned int idEdge = distance(map1D.begin(), find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
-                                                   return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
-                                               }));
+
+                // ID lati.
+                unsigned int idEdge = distance(map1D.begin(), find_if(map1D.begin(), map1D.end(),
+                                                [&](const pair<unsigned int, unsigned int>& p) {
+                                                return (p.first == idCurrent && p.second == idNext) ||
+                                                (p.first == idNext && p.second == idCurrent);
+                                                }));
 
                 tempVert.push_back(idCurrent);
                 tempEdge.push_back(idEdge);
@@ -1215,7 +1160,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
             mesh.EdgesCell2Ds.push_back(tempEdge);
         }
 
-        // Aggiornamento della mesh
+        // Aggiornamento della mesh.
         mesh.NumberOfCell0Ds = map0D.size();
         mesh.IdCell0Ds = id0;
         mesh.CoordinatesCell0Ds = map0D;
@@ -1237,12 +1182,14 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
         result.push_back(mesh);
     }
 
-    printSubPolygons(result);
+    //printSubPolygons(result);
 
     return true;
 }
 
-void printSubPolygons(vector<PolygonalMesh>& sub_polygons) // DA TOGLIERE, SOLO PER TESTARE LA MESH
+/////////////////////////////////
+
+/*void printSubPolygons(vector<PolygonalMesh>& sub_polygons) // DA TOGLIERE, SOLO PER TESTARE LA MESH
 {
     for (size_t i = 0; i < sub_polygons.size(); ++i)
     {
@@ -1284,4 +1231,52 @@ void printSubPolygons(vector<PolygonalMesh>& sub_polygons) // DA TOGLIERE, SOLO 
 
         cout << "\n";
     }
+}*/
+
+/////////////////////////////////
+
+// Paraview Parte 2.
+// La funzione esporta le coordinate dei sottopoligoni triangolati.
+// Tutti i triangoli appartenenti allo stesso poligono sono dello stesso colore.
+void Export_Paraview(vector<vector<Vector3d>>& subPolygons)
+{
+    int N = 0;
+    for (const auto& vec : subPolygons) {
+        N += vec.size();
+    }
+
+    MatrixXd points(3, N);
+    int col = 0;
+    for (const auto& vec : subPolygons) {
+        for (const auto& point : vec) {
+            points(0, col) = point.x();
+            points(1, col) = point.y();
+            points(2, col) = point.z();
+            ++col;
+        }
+    }
+
+    vector<vector<unsigned int>> polygon_vertices;
+    VectorXi material(N);
+    int start_index = 0;
+
+    for (const auto& el : subPolygons) {
+        unsigned int base_index = start_index;
+        for (unsigned int i = 0; i < el.size() - 2; ++i) {
+            // Aggiungo triangoli nel formato {base_index, base_index + i + 1, base_index + i + 2}
+            polygon_vertices.push_back({base_index, base_index + i + 1, base_index + i + 2});
+        }
+        // Tutti i vertici di questo poligono ricevono lo stesso materiale (start_index).
+        for (unsigned int j = 0; j < el.size(); ++j) {
+            for (unsigned int k = 0; k < el.size(); k++)
+                material(k) = start_index;
+        }
+        start_index += el.size();
+    }
+
+    vector<UCDProperty<double>> points_properties;
+    vector<UCDProperty<double>> polygons_properties;
+
+    Gedim::UCDUtilities UCD;
+    UCD.ExportPolygons("cut_polygons_paraview.inp", points, polygon_vertices, points_properties, polygons_properties, material);
 }

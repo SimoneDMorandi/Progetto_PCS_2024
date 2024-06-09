@@ -8,7 +8,7 @@
 using namespace std;
 using namespace Eigen;
 
-// Definisco la struttura che contiene le informazioni delle fratture.
+// Struttura che contiene le informazioni delle fratture.
 struct Fractures
 {
     unsigned int N_frac = 0;
@@ -16,12 +16,11 @@ struct Fractures
     vector<unsigned int> N_vert = {};
     vector<vector<Vector3d>> frac_vertices = {};
     vector<pair<vector<unsigned int>,vector<unsigned int>>> trace_type = {};
-        // Struttura salvavita:
-        //per ogni posizione del vettore esterno, che corrisponde all'id della frattura
-        //salvo un vettore con le id delle tracce e i corrispetivi tips
+        // Per ogni posizione del vettore esterno, che corrisponde all'id della frattura
+        // salvo un vettore con le id delle tracce e i corrispetivi tips.
 };
 
-// Definisco la struttura che contiene le informazioni delle tracce
+// Struttura che contiene le informazioni delle tracce.
 struct Traces
 {
     vector<unsigned int> traces_id = {};
@@ -30,19 +29,24 @@ struct Traces
     vector<double> traces_length = {};
 };
 
+//////////////////////////////////
+// PARTE 2
+//////////////////////////////////
+
+// Struttura che contiene le informazioni dei poligoni tagliati.
 struct PolygonalMesh
 {
-    // Cell0D
+    // Cell0D.
     unsigned int NumberOfCell0Ds = 0;
-    vector<unsigned int> IdCell0Ds = {}; // identificativo
-    vector<Vector3d> CoordinatesCell0Ds; // coordinate
+    vector<unsigned int> IdCell0Ds = {}; // Identificativo.
+    vector<Vector3d> CoordinatesCell0Ds; // Coordinate.
 
-    // Cell1D
+    // Cell1D.
     unsigned int NumberOfCell1Ds = 0;
-    vector<unsigned int> IdCell1Ds = {}; // identificativo
-    vector<vector<unsigned int>> VerticesCell1Ds = {}; // id vertici adiacenti
+    vector<unsigned int> IdCell1Ds = {}; // Identificativo
+    vector<vector<unsigned int>> VerticesCell1Ds = {}; // Id vertici adiacenti.
 
-    // Cell2D
+    // Cell2D.
     unsigned int NumberOfCell2Ds = 0;
     //vector<unsigned int> IdCell2Ds = {}; non li chiede
     vector<unsigned int> NumberOfVertices = {}; // num vertici
