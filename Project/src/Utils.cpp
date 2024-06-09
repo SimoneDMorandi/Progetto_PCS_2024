@@ -860,8 +860,8 @@ void Export_Paraview(vector<vector<Vector3d>>& subPolygons) {
 // PARTE 2
 ////////////////////////////////////////////////////////////////////////////////////
 
-// Funzione che prolunga una traccia fino ad incontrare i lati della frattura
-// Calcolo la retta passante per la traccia, e per ogni lato della frattura, trovo la loro intersezione
+// Funzione che prolunga una traccia fino ad incontrare i lati della frattura, inoltre il vettore che restituisce è della forma
+// [inizio traccia, fine traccia, inizio lato, fine lato 1, inizio lato 2, fine lato 2] dove i lati sono quelli che contengono la traccia
 vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vector3d>& traces_points, unsigned int & tip)
 {
     pair<Vector4d, Vector4d> points = equazioneRetta(traces_points[0], traces_points[1]);
@@ -930,7 +930,7 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
                 bool overlap_y = (sol[1] >= bBox[0][1] - eps) && (sol[1] <= bBox[1][1] + eps);
                 bool overlap_z = (sol[2] >= bBox[0][2] - eps) && (sol[2] <= bBox[1][2] + eps);
 
-                if(overlap_x && overlap_y && overlap_z && result.size() < 6)
+                if(overlap_x && overlap_y && overlap_z && result.size() < 6) // controllo che il punto sia interno
                 {
                     result[count] = sol;
                     if(result.size() < 6) result.push_back(coor1);
@@ -949,20 +949,70 @@ vector<Vector3d> extendTraceToEdges(vector<Vector3d>& frac_vertices, vector<Vect
     return result;
 }
 
+// Questa funzione permette di calcolare i sottopoligoni generati dal taglio, in particolare si decide quando inizia e quando finisce il sottopoligono
+pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
+                                                     vector<Vector3d> traces_points,
+                                                     unsigned int tip)
+{
+    vector<Vector3d> result = extendTraceToEdges(frac_vertices,
+                                                 traces_points,
+                                                 tip);
 
-//bool cutPolygons(Fractures& f, Traces& t, Fractures &final_pol)
+    unsigned int index1 = 0;
+    unsigned int index2 = 0;
+    vector<Vector3d> pol1 = {}, pol2 = {};
+    if (result.size() == 6)
+    {
+        auto it = find(frac_vertices.begin(), frac_vertices.end(), result[2]);
+        index1 = distance(frac_vertices.begin(), it); // posizione inizio lato 1
+        it = find(frac_vertices.begin(), frac_vertices.end(), result[4]);
+        index2 = distance(frac_vertices.begin(), it); // posizione inizio lato 2
+    }
+    else
+    {
+        return make_pair(pol1, pol2);; // non lancio eccezioni perché tanto in cutPolygon controllo che non sia vuoto
+    }
+
+    bool newPol = false;
+    for (unsigned int j = 0; j < frac_vertices.size(); j++)
+    {
+        if(newPol == false)
+        {
+            pol1.push_back(frac_vertices[j]);
+        }
+        else
+        {
+            pol2.push_back(frac_vertices[j]);
+        }
+
+        if (j == index1) // se sono all'inizio del lato 1, nel ciclo successivo costruisco il secondo poligono
+        {
+            newPol = true;
+            pol1.push_back(result[0]);
+            pol1.push_back(result[1]);
+        }
+
+        if (j == index2) // se sono all'inizio del lato 2, nel ciclo successivo finisco la costruzione del primo poligono
+        {
+            newPol = false;
+            pol2.push_back(result[1]);
+            pol2.push_back(result[0]);
+        }
+    }
+
+    return make_pair(pol1, pol2);
+}
+
 bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygons)
 {
     vector<PolygonalMesh> result;
     vector<unsigned int> number_of_sp;
     number_of_sp.reserve(f.N_frac);
-    //vector<vector<Vector3d>> found_polygons;
-    //double eps = 1e-15;
 
     for (unsigned int i = 0; i < f.N_frac; i++)
     {
         unsigned int counter = 0;
-        // Inizializza la coda con il poligono iniziale
+        // Inizializzo la coda con il poligono iniziale solamente se quel poligono ha delle traccce
         queue<vector<Vector3d>> polygon_queue;
         if(!f.trace_type[i].first.empty())
             polygon_queue.push(f.frac_vertices[i]);
@@ -999,7 +1049,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                         flag++;
                 }
 
-                // Controllo che la traccia sia interna al poligono
+                // Controllo che la traccia sia interna al poligono dato che posso avere poligoni tagliati
                 vector<Vector3d> bBox1 = Calculate_Bounding_Box(current_polygon);
                 for (auto& el : t.traces_points[trace_id])
                 {
@@ -1013,16 +1063,16 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     }
                 }
 
-                if (flag >= 1)
+                if (flag >= 1) // se la traccia non è interna
                 {
-                    if (current_polygon.size() >= 3)  // Aggiungi solo se il poligono ha almeno tre lati
+                    if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati
                     {
                         found_polygons.push_back(current_polygon);
                         counter ++;
                     }
                     continue;
                 }
-                else
+                else // se la traccia è interna, posso tagliare il poligono
                 {
                     pair<vector<Vector3d>, vector<Vector3d>> polygons;
 
@@ -1048,7 +1098,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
         {
             vector<Vector3d> current_polygon = polygon_queue.front();
             polygon_queue.pop();
-            if (current_polygon.size() >= 3)  // Aggiungi solo se il poligono ha almeno tre lati
+            if (current_polygon.size() >= 3)  // Aggiungo solo se il poligono ha almeno tre lati
             {
                 found_polygons.push_back(current_polygon);
                 counter ++;
@@ -1060,14 +1110,14 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
     } // chiudo ciclo sui poligoni
 
     // Stampa dei poligoni trovati  DA TOGLIERE, SOLO PER TEST
+    unsigned int start_index = 0;
+    unsigned int end_index = number_of_sp[0];
     for (unsigned int m = 0; m < f.N_frac; m++)
     {
-        unsigned int start_index = 0;
-        unsigned int end_index = number_of_sp[m];;
         if (m != 0)
         {
-            start_index = number_of_sp[m-1];
-            end_index = number_of_sp[m-1] + number_of_sp[m];
+            start_index += number_of_sp[m-1];
+            end_index += number_of_sp[m];
         }
 
         cout << "Taglio frattura " << m << endl;
@@ -1083,36 +1133,45 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
     cout << found_polygons.size()<< endl;
 
     // Riempio la struttura dati richiesta
-    for (unsigned int m = 0; m < f.N_frac; m++) {
+    start_index = 0;
+    end_index = number_of_sp[0];
+    for (unsigned int m = 0; m < f.N_frac; m++)
+    {
         PolygonalMesh mesh;
-        unsigned int start_index = 0;
-        unsigned int end_index = number_of_sp[m];;
         if (m != 0)
         {
-            start_index = number_of_sp[m-1];
-            end_index = number_of_sp[m-1] + number_of_sp[m];
+            start_index += number_of_sp[m-1];
+            end_index += number_of_sp[m];
         }
 
-        vector<Vector3d> map0D;
-        vector<unsigned int> map1D;
-        vector<unsigned int> id0;
+        vector<Vector3d> map0D; // coordinate celle 0D
+        vector<pair<unsigned int, unsigned int>> map1D; // id celle 0D che delimitano i lati
+        vector<unsigned int> id0; // id lati vertici
+        vector<unsigned int> id1; // id lati
         unsigned int counterID0 = 0;
         unsigned int counterID1 = 0;
-        vector<pair<unsigned int, unsigned int>> edges;
+
+        // mi riservo lo spazio, anche sovrastimando
+        map0D.reserve(3 * found_polygons.size());
+        map1D.reserve(3 * found_polygons.size());
+        id0.reserve(3 * found_polygons.size());
+        id1.reserve(3 * found_polygons.size());
 
         for (unsigned int n = start_index; n < end_index; n++)
         {
             vector<Vector3d> polygons = found_polygons[n];
             vector<unsigned int> tempVert;
             vector<unsigned int> tempEdge;
+            tempVert.reserve(polygons.size());
+            tempEdge.reserve(polygons.size());
 
             // Elaborazione delle celle 0D e 1D
             for (unsigned int j = 0; j < polygons.size(); j++)
             {
                 Vector3d current = polygons[j];
-                Vector3d next = polygons[(j + 1) % polygons.size()]; // Gestione dell'ultimo elemento
+                Vector3d next = polygons[(j + 1) % polygons.size()]; // gestisco correttamente l'ultimo elemento
 
-                // Usa std::find per cercare l'elemento in map0D
+                // celle 0D
                 auto it = find(map0D.begin(), map0D.end(), current);
                 if (it == map0D.end())
                 {
@@ -1120,6 +1179,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     id0.push_back(counterID0);
                     counterID0 ++;
                 }
+
                 it = find(map0D.begin(), map0D.end(), next);
                 if (it == map0D.end())
                 {
@@ -1128,46 +1188,51 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
                     counterID0 ++;
                 }
 
-                // Ottenere gli ID delle coordinate
+                // ID delle coordinate
                 unsigned int idCurrent = distance(map0D.begin(), find(map0D.begin(), map0D.end(), current));
                 unsigned int idNext = distance(map0D.begin(), find(map0D.begin(), map0D.end(), next));
-                //auto it2 = find(edges.begin(), edges.end(),{idCurrent, idNext});
-                auto it2 = find_if(edges.begin(), edges.end(), [&](const pair<unsigned int, unsigned int>& p) {
+
+                // celle 1D
+                auto it2 = find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
                     return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
                 });
-                if (it2 == edges.end())
+                if (it2 == map1D.end())
                 {
-                    edges.push_back({idCurrent, idNext});
-                    map1D.push_back(counterID1);
+                    map1D.push_back({idCurrent, idNext});
+                    id1.push_back(counterID1);
                     counterID1 ++;
                 }
-
+                // ID latti
+                unsigned int idEdge = distance(map1D.begin(), find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
+                                                   return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
+                                               }));
 
                 tempVert.push_back(idCurrent);
-                tempEdge.push_back(counterID1);
+                tempEdge.push_back(idEdge);
             }
+
             mesh.VerticesCell2Ds.push_back(tempVert);
             mesh.EdgesCell2Ds.push_back(tempEdge);
         }
-        // Aggiornamento del mesh
+
+        // Aggiornamento della mesh
         mesh.NumberOfCell0Ds = map0D.size();
         mesh.IdCell0Ds = id0;
         mesh.CoordinatesCell0Ds = map0D;
 
 
-        mesh.NumberOfCell1Ds = map1D.size();
-        mesh.IdCell1Ds = map1D;
-        //mesh.VerticesCell1Ds.push_back(edges);
+        mesh.NumberOfCell1Ds = id1.size();
+        mesh.IdCell1Ds = id1;
         vector<unsigned int> tempEdge;
-        for (const auto& edge : edges) {
+        for (const auto& edge : map1D) {
             tempEdge.push_back(edge.first);
             tempEdge.push_back(edge.second);
         }
         mesh.VerticesCell1Ds.push_back(tempEdge);
 
-        mesh.NumberOfCell2Ds = number_of_sp.size();
+        mesh.NumberOfCell2Ds = number_of_sp[m];
         mesh.NumberOfVertices.push_back(map0D.size());
-        mesh.NumberOfEdges.push_back(map1D.size());
+        mesh.NumberOfEdges.push_back(id1.size());
 
         result.push_back(mesh);
     }
@@ -1175,60 +1240,6 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
     printSubPolygons(result);
 
     return true;
-}
-
-pair<vector<Vector3d>,vector<Vector3d>> subPolygons(vector<Vector3d> frac_vertices,
-                                                     vector<Vector3d> traces_points,
-                                                     unsigned int tip)
-{
-    vector<Vector3d> result = extendTraceToEdges(frac_vertices,
-                                                 traces_points,
-                                                 tip);
-
-    unsigned int index1 = 0;
-    unsigned int index2 = 0;
-    vector<Vector3d> pol1 = {}, pol2 = {};
-    if (result.size() == 6)
-    {
-        auto it = find(frac_vertices.begin(), frac_vertices.end(), result[2]);
-        index1 = distance(frac_vertices.begin(), it);
-        it = find(frac_vertices.begin(), frac_vertices.end(), result[4]);
-        index2 = distance(frac_vertices.begin(), it);
-    }
-    else
-    {
-        return make_pair(pol1, pol2);; // non lancio eccezioni perché tanto in cutPolygon controllo che non sia vuoto
-    }
-
-    bool newPol = false;
-    for (unsigned int j = 0; j < frac_vertices.size(); j++)
-    {
-        if(newPol == false)
-        {
-            pol1.push_back(frac_vertices[j]);
-        }
-        else
-        {
-            pol2.push_back(frac_vertices[j]);
-        }
-
-
-        if (j == index1)
-        {
-            newPol = true;
-            pol1.push_back(result[0]);
-            pol1.push_back(result[1]);
-        }
-
-        if (j == index2)
-        {
-            newPol = false;
-            pol2.push_back(result[1]);
-            pol2.push_back(result[0]);
-        }
-    }
-
-    return make_pair(pol1, pol2);
 }
 
 void printSubPolygons(vector<PolygonalMesh>& sub_polygons) // DA TOGLIERE, SOLO PER TESTARE LA MESH
