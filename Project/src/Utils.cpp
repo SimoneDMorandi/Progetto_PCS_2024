@@ -1270,24 +1270,6 @@ void Export_Paraview(vector<vector<Vector3d>>& subPolygons)
         vertexIndex += polygon.size();
         materialIndex++;
     }
-    cout << endl << endl;
-    cout << material;
-
-    /*for (const auto& el : subPolygons) {
-        unsigned int base_index = start_index;
-        for (unsigned int i = 0; i < el.size() - 2; ++i)
-        {
-            // Aggiungo triangoli nel formato {base_index, base_index + i + 1, base_index + i + 2}
-            polygon_vertices.push_back({base_index, base_index + i + 1, base_index + i + 2});
-        }
-        // Tutti i vertici di questo poligono ricevono lo stesso materiale (start_index).
-        for (unsigned int j = 0; j < el.size(); ++j)
-        {
-            for (unsigned int k = 0; k < el.size(); k++)
-                material(k) = start_index;
-        }
-        start_index += el.size();
-    }*/
 
     vector<UCDProperty<double>> points_properties;
     vector<UCDProperty<double>> polygons_properties;
