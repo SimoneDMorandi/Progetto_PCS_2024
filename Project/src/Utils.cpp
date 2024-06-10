@@ -328,7 +328,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                         overLap_z2_1 && overLap_x1_2 && overLap_x2_2 && overLap_y1_2 && overLap_y2_2 &&
                         overLap_z1_2 && overLap_z2_2)
                     {
-                        // Completo la struttura TRACES
+                        // Completo la struttura TRACES.
                         traces_list.traces_id.push_back(count_traces);
                         traces_list.traces_points.push_back({points[1], points[2]});
                         traces_list.traces_length.push_back((points[2]-points[1]).lpNorm<1>());
@@ -369,7 +369,7 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                 count_pass ++;
                             }
                         }
-                        if(count_pass == 2) // Caso di traccia passante per il primo poligono e non per il secondo
+                        if(count_pass == 2) // Caso di traccia passante per il primo poligono e non per il secondo.
                         {
                             fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
                             fractures_list.trace_type[i].second.push_back(0);
@@ -377,13 +377,13 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                             fractures_list.trace_type[j].second.push_back(1);
                             count_traces++;
                         }
-                        else  // Caso di traccia non passante per il primo ma forse per il secondo
+                        else  // Caso di traccia non passante per il primo ma forse per il secondo.
                         {
-                            // Riempio Fractures per il poligono i
+                            // Riempio Fractures per il poligono i.
                             fractures_list.trace_type[i].first.push_back(traces_list.traces_id[count_traces]);
                             fractures_list.trace_type[i].second.push_back(1);
 
-                            // Controllo se passante per j
+                            // Controllo se passante per j.
                             count_pass = 0;
                             for (unsigned int k = 0; k < fractures_list.N_vert[j]; k++)
                             {
@@ -414,13 +414,13 @@ void Find_Traces(Fractures &fractures_list, Traces& traces_list)
                                     count_pass ++;
                                 }
                             }
-                            if(count_pass == 2) // Caso di traccia passante per j
+                            if(count_pass == 2) // Caso di traccia passante per j.
                             {
                                 fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
                                 count_traces++;
                                 fractures_list.trace_type[j].second.push_back(0);
                             }
-                            else // Caso di traccia non passante per j
+                            else // Caso di traccia non passante per j.
                             {
                                 fractures_list.trace_type[j].first.push_back(traces_list.traces_id[count_traces]);
                                 count_traces++;
@@ -447,7 +447,7 @@ Prende in input 2 punti e restituisce due vettori 4x1 che identificano la retta 
 */
 pair<Vector4d, Vector4d> equazioneRetta(const Vector3d& v1, const Vector3d& v2)
 {
-    if ((v1 - v2).lpNorm<1>() < eps) // bisogna usare una tolleranza altrimenti non funzionano i test
+    if ((v1 - v2).lpNorm<1>() < eps)
     {
         throw invalid_argument("v1 e v2 devono essere diversi");
     }
@@ -490,7 +490,7 @@ Vector4d pianoFrattura(const Vector3d& v1, const Vector3d& v2, const Vector3d& v
     Vector3d AB = v2-v1;
     Vector3d AC = v3-v1;
     Vector3d n1 = AB.cross(AC); // Vettore normale al piano.
-    // Verifica collinearità usando il prodotto vettoriale -> se l'area del triangolo è nulla i punti sono allineati
+    // Verifica collinearità usando il prodotto vettoriale -> se l'area del triangolo è nulla i punti sono allineati.
     if (n1.lpNorm<1>() < eps)
     {
         throw invalid_argument("The points do not define a valid plane (points are collinear or coincident).");
@@ -543,18 +543,18 @@ bool Export_traces_Info(Traces& t)
 // Funzione che verifica se una traccia è passante per una frattura.
 bool check_pass(const Vector4d& pi1, const Vector4d& pi2, const Vector3d& point)
 {
-    // Calcola la distanza del punto dal primo piano
+    // Calcola la distanza del punto dal primo piano.
     double dist1 = pi1.head<3>().dot(point) + pi1[3];
-    // Calcola la distanza del punto dal secondo piano
+    // Calcola la distanza del punto dal secondo piano.
     double dist2 = pi2.head<3>().dot(point) + pi2[3];
 
-    // Verifica se il punto si trova abbastanza vicino a uno dei piani entro una tolleranza eps
+    // Verifica se il punto si trova abbastanza vicino a uno dei piani entro una tolleranza eps.
     return (abs(dist1) < tau) && (abs(dist2) < tau);
 }
 
 /////////////////////////////////
 
-// Funzione che stampa le informazioni della traccia sul file di output
+// Funzione che stampa le informazioni della traccia sul file di output.
 bool Export_traces_Type(Fractures& f,Traces& t)
 {
     ofstream of("traces_type.txt", ios::out);
@@ -678,8 +678,8 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
             if (!is_sorted(lengths.begin(), lengths.end()))
             {
 
-                // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips
-                // vector<double> lunghezze parziali dal lastzeroIndex fino alla fine
+                // vector<double> vettore temporaneo con solo metà lunghezze ordinate per tips.
+                // vector<double> lunghezze parziali dal lastzeroIndex fino alla fine.
                 vector<double> first_half(lengths.begin(), lengths.begin() + lastZeroIndex + 1);
                 vector<unsigned int> first_half_ids(fracture_pair.first.begin(), fracture_pair.first.begin() + lastZeroIndex + 1);
 
@@ -702,17 +702,15 @@ void Sort_Traces_Type(Fractures& f, Traces &t)
 /////////////////////////////////
 
 template<typename T>
-// Funzione che ordina vec1 fino all'index e applica gli scambi a vec2
+// Funzione che ordina vec1 fino all'index e applica gli scambi a vec2.
 void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
 {
     vector<unsigned int> indices(vec1.size());
     iota(indices.begin(), indices.end(), 0);
 
-    // Sort indices based on values in vec1
     sort(indices.begin(), indices.end(),
               [&vec1](unsigned int i, unsigned int j) { return vec1[i] < vec1[j]; });
 
-    // Reorder vec1 and vec2 based on sorted indices
     vector<T> sorted_vec1(vec1.size());
     vector<unsigned int> sorted_vec2(vec2.size());
 
@@ -721,7 +719,6 @@ void sort_pair(vector<T>& vec1, vector<unsigned int>& vec2)
         sorted_vec2[i] = vec2[indices[i]];
     }
 
-    // Update vec1 and vec2 with sorted values
     vec1 = move(sorted_vec1);
     vec2 = move(sorted_vec2);
 }
@@ -1257,22 +1254,40 @@ void Export_Paraview(vector<vector<Vector3d>>& subPolygons)
     }
 
     vector<vector<unsigned int>> polygon_vertices;
-    VectorXi material(N);
-    int start_index = 0;
+    VectorXi material(N-2*subPolygons.size());
+    unsigned int vertexIndex = 0;
+    int materialIndex = 0;
+    unsigned int materialPos = 0;
+    for (const auto& polygon : subPolygons) {
+        // Triangulate the polygon
+        for (unsigned int i = 1; i < polygon.size() - 1; ++i)
+        {
+            polygon_vertices.push_back({vertexIndex, vertexIndex + i, vertexIndex + i + 1});
+            material(materialPos) = materialIndex;
+            materialPos++;
+        }
+        // Update the vertex index for the next polygon
+        vertexIndex += polygon.size();
+        materialIndex++;
+    }
+    cout << endl << endl;
+    cout << material;
 
-    for (const auto& el : subPolygons) {
+    /*for (const auto& el : subPolygons) {
         unsigned int base_index = start_index;
-        for (unsigned int i = 0; i < el.size() - 2; ++i) {
+        for (unsigned int i = 0; i < el.size() - 2; ++i)
+        {
             // Aggiungo triangoli nel formato {base_index, base_index + i + 1, base_index + i + 2}
             polygon_vertices.push_back({base_index, base_index + i + 1, base_index + i + 2});
         }
         // Tutti i vertici di questo poligono ricevono lo stesso materiale (start_index).
-        for (unsigned int j = 0; j < el.size(); ++j) {
+        for (unsigned int j = 0; j < el.size(); ++j)
+        {
             for (unsigned int k = 0; k < el.size(); k++)
                 material(k) = start_index;
         }
         start_index += el.size();
-    }
+    }*/
 
     vector<UCDProperty<double>> points_properties;
     vector<UCDProperty<double>> polygons_properties;

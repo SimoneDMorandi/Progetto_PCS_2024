@@ -18,14 +18,14 @@ int main()
     Traces traces_list;
 
     // Lettura del file.
-    string path = "./DATA/FR362_data.txt";
+    string path = "./DATA/FR3_data.txt";
     if(!importFractures(path, fractures_list)){
         cerr << "Errore nell'import." << endl;
         return 1;
     }
     cout << "Fratture importate correttamente." << endl;
 
-    // Calcolo delle tracce
+    // Calcolo delle tracce.
     Find_Traces(fractures_list, traces_list);
 
     // Esportazione tracce.
@@ -43,7 +43,7 @@ int main()
     {
         return 1;
     }
-    cout << "Tipologie di tracce eesportate correttamente.";
+    cout << "Tipologie di tracce esportate correttamente." << endl;
 
     // Esportazione delle fratture e delle tracce su paraview.
     Export_Paraview(fractures_list,traces_list);
@@ -57,7 +57,7 @@ int main()
     {
         return 1;
     }
-    cout << "Sottopoligoni esportati correttamente";
+    cout << "Sottopoligoni esportati correttamente" << endl;
 
     // Esportazione dei sottopoligoni triangolati.
     Export_Paraview(found_polygons);
