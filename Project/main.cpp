@@ -57,7 +57,7 @@ int main()
     {
         return 1;
     }
-    cout << "Sottopoligoni esportati correttamente" << endl;
+    cout << "Sottopoligoni esportati correttamente." << endl;
 
     // Esportazione dei sottopoligoni triangolati.
     Export_Paraview(found_polygons);

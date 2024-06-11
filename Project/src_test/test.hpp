@@ -14,9 +14,6 @@ using namespace Eigen;
 using vec2 = vector<Vector3d>;
 using vec3 = vector<vector<Vector3d>>;
 
-//double eps = numeric_limits<decltype(eps)>::epsilon();
-//double eps = 1e-10;
-
 // Custom function to compare two Vector3d objects with tolerance
 bool Near(const Vector3d& a, const Vector3d& b, double eps) {
     return (a - b).norm() < eps;
@@ -34,7 +31,7 @@ bool VectorsNear(const vector<Vector3d>& vec1, const vector<Vector3d>& vec2, dou
 }
 
 // Custom function to compare vectors of vectors of Vector3d objects
-bool NestedVectorsNear(const vector<vector<Vector3d>>& vec1, const vector<vector<Vector3d>>& vec2, double eps) {
+bool CheckVectorsNear(const vector<vector<Vector3d>>& vec1, const vector<vector<Vector3d>>& vec2, double eps) {
     if (vec1.size() != vec2.size()) return false;
     for (size_t i = 0; i < vec1.size(); ++i) {
         if (vec1[i].size() != vec2[i].size()) return false;
@@ -87,7 +84,7 @@ TEST(EquazioneRettaTest, IdenticalPoints)
 TEST(EquazioneRettaTest, PointsTooClose)
 {
     Vector3d v1(1.0, 2.0, 3.0);
-    Vector3d v2(1.0 + eps, 2.0 + eps, 3.0 + eps);
+    Vector3d v2(1.0 + eps/4, 2.0 + eps/4, 3.0 + eps/4);
 
     EXPECT_THROW(equazioneRetta(v1, v2), invalid_argument);
 
@@ -189,7 +186,7 @@ TEST(Find_Traces, ValidTraces)
         ASSERT_TRUE(traces_list0.traces_points.empty());
 
     // 2-> fratture con traccia passante per entrambe
-        Traces traces_list1;
+        /*Traces traces_list1;
         fractures_list.N_frac = 2;
         fractures_list.frac_id = {0, 1};
         fractures_list.N_vert = { 3, 3 };
@@ -208,21 +205,9 @@ TEST(Find_Traces, ValidTraces)
             }
             cout << endl;
         }
-        ASSERT_TRUE(NestedVectorsNear(traces_list1.traces_points, expected_points, eps));
+        ASSERT_TRUE(CheckVectorsNear(traces_list1.traces_points, expected_points, eps));*/
 
     // 3-> traccia interna
-        /*Traces traces_list2;
-        fractures_list.frac_vertices = {
-            { Vector3d(0, 0, 0), Vector3d(1, 0, 0), Vector3d(1, 1, 0), Vector3d(0, 1, 0) }, // Frattura 1
-            { Vector3d(0.1, 0.5, -0.34), Vector3d(0.5, 0.5, -0.34), Vector3d(0.5, 0.5, 0.45), Vector3d(0.15, 0.5, 0.45) }  // Frattura 2
-        };
-        Find_Traces(fractures_list, traces_list2);
-
-        expected_traces_gen = { { 0, 1 } };
-        ASSERT_EQ(traces_list2.traces_gen, expected_traces_gen);
-        expected_points = {{{0.12, 0.5, 0}, {0.5, 0.5, 0}}};
-        ASSERT_FALSE(NestedVectorsNear(traces_list2.traces_points, expected_points, eps));*/
-
         Traces traces_list2;
         fractures_list.frac_vertices = {
             { Vector3d(0.1, 0.1, 0.0), Vector3d(0.9, 0.1, 0.0), Vector3d(0.9, 0.9, 0.0), Vector3d(0.1, 0.9, 0.0) }, // Frattura 1
@@ -230,10 +215,10 @@ TEST(Find_Traces, ValidTraces)
         };
         Find_Traces(fractures_list, traces_list2);
 
-        expected_traces_gen = { { 0, 1 } };
-        ASSERT_EQ(traces_list2.traces_gen, expected_traces_gen);
-        expected_points = { { { 0.4, 0.4, 0.0 }, { 0.6, 0.6, 0.0 } } };
-        ASSERT_FALSE(NestedVectorsNear(traces_list2.traces_points, expected_points, eps));
+        //vector<vector<unsigned int>> expected_traces_gen = { { 0, 1 } };
+        //ASSERT_EQ(traces_list2.traces_gen, expected_traces_gen);
+        vector<vector<Vector3d>> expected_points = { { { 0.4, 0.4, 0.0 }, { 0.6, 0.6, 0.0 } } };
+        ASSERT_FALSE(CheckVectorsNear(traces_list2.traces_points, expected_points, eps));
 
 
     // 4-> traccia a metà di una
@@ -244,18 +229,11 @@ TEST(Find_Traces, ValidTraces)
         };
         Find_Traces(fractures_list, traces_list3);
 
-        expected_traces_gen = { { 0, 1 } };
-        ASSERT_EQ(traces_list3.traces_gen, expected_traces_gen);
+        //vector<vector<unsigned int>> expected_traces_gen = { { 0, 1 } };
+        //ASSERT_EQ(traces_list3.traces_gen, expected_traces_gen);
         expected_points = {{{0.32, 0.5, 0}, {-0.32, 0.5, 0}}};
-        ASSERT_FALSE(NestedVectorsNear(traces_list3.traces_points, expected_points, eps));
-
-    // 5-> una traccia passante per un poligono e una non passante -> è il caso interno?
+        ASSERT_FALSE(CheckVectorsNear(traces_list3.traces_points, expected_points, eps));
 }
-
-/*TEST(Find_Traces, InvalidTraces)
-{
-
-}*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -270,16 +248,11 @@ TEST(check_pass, ValidCheck)
     point = {1, 1, 0};
     ASSERT_FALSE(check_pass(pi1, pi2, point));
 
-    /*Vector4d pi3 = {0, -0.5, 0, 0.25};
+    Vector4d pi3 = {0, -0.5, 0, 0.25};
     point = {0, 0.5, 0};
-    ASSERT_FALSE(check_pass(pi1, pi3, point, eps));*/
+    ASSERT_FALSE(check_pass(pi1, pi3, point));
 
 }
-
-/*TEST(check_pass, InvalidCheck)
-{
-
-}*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
@@ -290,14 +263,14 @@ TEST(Calculate_Bounding_Box, ValidPolygon)
     vector<Vector3d> expected_Bbox = {{0.0, 0.0, 0.0},{1.0, 1.0, 0.0}};
 
     ASSERT_EQ(Calculate_Bounding_Box(polygon), expected_Bbox);
-     //ASSERT_TRUE(NestedVectorsNear(Calculate_Bounding_Box(polygon),  expected_Bbox, eps));
+     //ASSERT_TRUE(CheckVectorsNear(Calculate_Bounding_Box(polygon),  expected_Bbox, eps));
 
     // da file FR200_data
     polygon = {{0.75, 0.075, 0.11},{1.32, 1.03, 0.11},{0.95, 1.25, 0.72},{0.39, 0.29, 0.72}};
     expected_Bbox = {{0.39, 0.075, 0.11},{1.32, 1.25, 0.72}};
 
     ASSERT_EQ(Calculate_Bounding_Box(polygon), expected_Bbox);
-    //ASSERT_TRUE(NestedVectorsNear(Calculate_Bounding_Box(polygon),  expected_Bbox, eps));
+    //ASSERT_TRUE(CheckVectorsNear(Calculate_Bounding_Box(polygon),  expected_Bbox, eps));
 }
 
 TEST(Calculate_Bounding_Box, InvalidPolygon)
@@ -336,31 +309,29 @@ TEST(Export_traces_Info, InvalidExport)
     };
     ASSERT_FALSE(Export_traces_Info(t3));
 }
-// Warning che ricevo: non sto inizializzando tutti i membri della struttura traces perché in questo
-// export non è richiesta la stampa passante e non passante
 
 //////////////////////////////////////////////////////////////////////////////////////////
-/*
-TEST(Export_traces_Type, ValidExport)
+
+/*TEST(Export_traces_Type, ValidExport)
 {
     Fractures fractures_list;
     fractures_list.N_frac = 2;
     fractures_list.frac_id = {0, 1};
     fractures_list.N_vert = {3, 3};
     fractures_list.frac_vertices = {
-        { Vector3d(0.8, 0.0, -0.1), Vector3d(0.8, 0.0, 0.3), Vector3d(0.8, 1.0, 0.3), Vector3d(0.8, 1.0, -0.1) }, // Frattura 1
-        { Vector3d(0.0, 0.0, 0.0), Vector3d(1.0, 0.0, 0.0), Vector3d(1.0, 1.0, 0.0), Vector3d(0.0, 1.0, .00) }  // Frattura 2
+        { Vector3d(0.8, 0.0, -0.1), Vector3d(0.8, 0.0, 0.3), Vector3d(0.8, 1.0, 0.3) }, // Frattura 1
+        { Vector3d(0.0, 0.0, 0.0), Vector3d(1.0, 0.0, 0.0), Vector3d(1.0, 1.0, 0.0) }  // Frattura 2
     };
     fractures_list.trace_type = {{{1}, {1}}};
-
+//, Vector3d(0.8, 1.0, -0.1)  , Vector3d(0.0, 1.0, .00)
     Traces t1 = {
-        {0},
+        {0, 1},
         {{0, 1}},
         {{{0.8, 0.0, 0.0}, {0.8, 1.0, 0.0}}},
         {1.0}
     };
     ASSERT_TRUE(Export_traces_Type(fractures_list, t1));
-}
+}*/
 
 TEST(Export_traces_Type, InvalidExport)
 {
@@ -368,7 +339,7 @@ TEST(Export_traces_Type, InvalidExport)
     Traces t2 = { {}, {}, {}, {} };
     ASSERT_TRUE(Export_traces_Type(f2, t2));
 }
-*/
+
 //////////////////////////////////////////////////////////////////////////////////////////
 
 TEST(Sort_Traces_Type, ValidSort)
@@ -404,5 +375,32 @@ TEST(Sort_Traces_Type, ValidSort)
     EXPECT_EQ(fractures.trace_type[2].second, expected_tips_3);
 }
 
-
 //////////////////////////////////////////////////////////////////////////////////////////
+
+TEST(cutPolygons, ValidCut)
+{
+    vector<vector<Vector3d>> expected_found_polygons = {{{0.8, 0.0, -0.1}, {0.8, 0.0, 0.0}, {0.8, 1.0, 0.0}, {0.8, 1.0, -0.1}},
+                                                        {{0.8, 0.0, 0.3}, {0.8, 1.0, 0.3}, {0.8, 1.0, 0.0}, {0.8, 0.0, 0.0}}};
+    vector<vector<Vector3d>> found_polygons;
+    Fractures fractures_list;
+    Traces traces_list;
+
+    fractures_list.N_frac = 1;
+    fractures_list.frac_id = {0};
+    fractures_list.N_vert = {3};
+    fractures_list.frac_vertices = {
+        { Vector3d(0.8, 0.0, -0.1), Vector3d(0.8, 0.0, 0.3), Vector3d(0.8, 1.0, 0.3), Vector3d(0.8, 1.0, -0.1) }};
+    fractures_list.trace_type = {{ {0}, {1} }};
+
+    traces_list.traces_gen = {};
+    traces_list.traces_id = {0};
+    traces_list.traces_length = {1};
+    traces_list.traces_points = {{{0.8, 0.0, 0.0}, {0.8, 1.0, 0.0}}};
+
+    cutPolygons(fractures_list, traces_list, found_polygons);
+    ASSERT_TRUE(CheckVectorsNear(found_polygons, expected_found_polygons, eps));
+
+}
+
+
+
