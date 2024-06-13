@@ -953,7 +953,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
 {
     vector<PolygonalMesh> result;
     vector<unsigned int> number_of_sp;
-    number_of_sp.reserve(f.N_frac);
+    number_of_sp.resize(f.N_frac);
 
     for (unsigned int i = 0; i < f.N_frac; i++)
     {
@@ -1051,7 +1051,7 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
             }
         }
 
-        number_of_sp.push_back(counter);
+        number_of_sp[i] = counter;
 
     } //Chiusura del ciclo sui poligoni.
 
@@ -1067,100 +1067,143 @@ bool cutPolygons(Fractures& f, Traces& t, vector<vector<Vector3d>>& found_polygo
             end_index += number_of_sp[m];
         }
 
-        vector<Vector3d> map0D; // Coordinate celle 0D.
-        vector<pair<unsigned int, unsigned int>> map1D; // Id celle 0D che delimitano i lati.
-        vector<unsigned int> id0; // Id lati vertici.
-        vector<unsigned int> id1; // Id lati.
-        unsigned int counterID0 = 0;
-        unsigned int counterID1 = 0;
-
-        // Riservo lo spazio, anche sovrastimando.
-        map0D.reserve(3 * found_polygons.size());
-        map1D.reserve(3 * found_polygons.size());
-        id0.reserve(3 * found_polygons.size());
-        id1.reserve(3 * found_polygons.size());
-
-        for (unsigned int n = start_index; n < end_index; n++)
+        if (number_of_sp[m] == 0) // Se non ho sottopoligoni, la mesh contiene il poligono che leggo in input.
         {
-            vector<Vector3d> polygons = found_polygons[n];
-            vector<unsigned int> tempVert;
-            vector<unsigned int> tempEdge;
-            tempVert.reserve(polygons.size());
-            tempEdge.reserve(polygons.size());
+            mesh.NumberOfCell0Ds = f.N_vert[m];
+            vector<unsigned int> IdCell0Ds(f.N_vert[m]);
+            iota(IdCell0Ds.begin(), IdCell0Ds.end(), 0);
+            mesh.IdCell0Ds = IdCell0Ds;
+            mesh.CoordinatesCell0Ds = f.frac_vertices[m];
 
-            // Elaborazione delle celle 0D e 1D.
-            for (unsigned int j = 0; j < polygons.size(); j++)
+            mesh.NumberOfCell1Ds = f.N_vert[m];
+            mesh.IdCell1Ds = IdCell0Ds;
+            for (unsigned int i = 0; i < f.N_vert[m]; ++i) {
+                mesh.VerticesCell1Ds.push_back({i, i + 1});
+            }
+            mesh.VerticesCell1Ds.push_back({f.N_vert[m] - 1, 0});
+
+            mesh.NumberOfCell2Ds = 1;
+            mesh.NumberOfEdges.push_back(f.N_vert[m]);
+            mesh.NumberOfVertices.push_back(f.N_vert[m]);
+
+            vector<unsigned int> temp;
+            temp.reserve(f.N_vert[m] * 2);
+            for (unsigned int i = 0; i < f.N_vert[m]; ++i) {
+                temp.push_back(i);
+                temp.push_back(i + 1);
+            }
+            temp.push_back(f.N_vert[m] - 1);
+            temp.push_back(0);
+            mesh.VerticesCell2Ds.push_back(temp);
+
+            temp.clear();
+            temp.reserve(f.N_vert[m] * 2);
+            for (unsigned int i = 0; i < f.N_vert[m]; ++i) {
+                temp.push_back(i);
+                temp.push_back(i + 1);
+            }
+            temp.push_back(f.N_vert[m] - 1);
+            temp.push_back(0);
+            mesh.EdgesCell2Ds.push_back(temp);
+
+            result.push_back(mesh);
+        }
+        else
+        {
+            vector<Vector3d> map0D; // Coordinate celle 0D.
+            vector<pair<unsigned int, unsigned int>> map1D; // Id celle 0D che delimitano i lati.
+            vector<unsigned int> id0; // Id lati vertici.
+            vector<unsigned int> id1; // Id lati.
+            unsigned int counterID0 = 0;
+            unsigned int counterID1 = 0;
+
+            // Riservo lo spazio, anche sovrastimando.
+            map0D.reserve(3 * found_polygons.size());
+            map1D.reserve(3 * found_polygons.size());
+            id0.reserve(3 * found_polygons.size());
+            id1.reserve(3 * found_polygons.size());
+
+            for (unsigned int n = start_index; n < end_index; n++)
             {
-                Vector3d current = polygons[j];
-                Vector3d next = polygons[(j + 1) % polygons.size()]; // Gestisco correttamente l'ultimo elemento.
+                vector<Vector3d> polygons = found_polygons[n];
+                vector<unsigned int> tempVert;
+                vector<unsigned int> tempEdge;
+                tempVert.reserve(polygons.size());
+                tempEdge.reserve(polygons.size());
 
-                // Celle 0D.
-                auto it = find(map0D.begin(), map0D.end(), current);
-                if (it == map0D.end())
+                // Elaborazione delle celle 0D e 1D.
+                for (unsigned int j = 0; j < polygons.size(); j++)
                 {
-                    map0D.push_back(current);
-                    id0.push_back(counterID0);
-                    counterID0 ++;
+                    Vector3d current = polygons[j];
+                    Vector3d next = polygons[(j + 1) % polygons.size()]; // Gestisco correttamente l'ultimo elemento.
+
+                    // Celle 0D.
+                    auto it = find(map0D.begin(), map0D.end(), current);
+                    if (it == map0D.end())
+                    {
+                        map0D.push_back(current);
+                        id0.push_back(counterID0);
+                        counterID0 ++;
+                    }
+
+                    it = find(map0D.begin(), map0D.end(), next);
+                    if (it == map0D.end())
+                    {
+                        map0D.push_back(next);
+                        id0.push_back(counterID0);
+                        counterID0 ++;
+                    }
+
+                    // ID delle coordinate.
+                    unsigned int idCurrent = distance(map0D.begin(), find(map0D.begin(), map0D.end(), current));
+                    unsigned int idNext = distance(map0D.begin(), find(map0D.begin(), map0D.end(), next));
+
+                    // Celle 1D.
+                    auto it2 = find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
+                        return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
+                    });
+                    if (it2 == map1D.end())
+                    {
+                        map1D.push_back({idCurrent, idNext});
+                        id1.push_back(counterID1);
+                        counterID1 ++;
+                    }
+
+                    // ID lati.
+                    unsigned int idEdge = distance(map1D.begin(), find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
+                                                       return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
+                                                   }));
+
+                    tempVert.push_back(idCurrent);
+                    tempEdge.push_back(idEdge);
                 }
 
-                it = find(map0D.begin(), map0D.end(), next);
-                if (it == map0D.end())
-                {
-                    map0D.push_back(next);
-                    id0.push_back(counterID0);
-                    counterID0 ++;
-                }
-
-                // ID delle coordinate.
-                unsigned int idCurrent = distance(map0D.begin(), find(map0D.begin(), map0D.end(), current));
-                unsigned int idNext = distance(map0D.begin(), find(map0D.begin(), map0D.end(), next));
-
-                // Celle 1D.
-                auto it2 = find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
-                    return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
-                });
-                if (it2 == map1D.end())
-                {
-                    map1D.push_back({idCurrent, idNext});
-                    id1.push_back(counterID1);
-                    counterID1 ++;
-                }
-
-                // ID lati.
-                unsigned int idEdge = distance(map1D.begin(), find_if(map1D.begin(), map1D.end(), [&](const pair<unsigned int, unsigned int>& p) {
-                                                   return (p.first == idCurrent && p.second == idNext) || (p.first == idNext && p.second == idCurrent);
-                                               }));
-
-                tempVert.push_back(idCurrent);
-                tempEdge.push_back(idEdge);
+                mesh.VerticesCell2Ds.push_back(tempVert);
+                mesh.EdgesCell2Ds.push_back(tempEdge);
             }
 
-            mesh.VerticesCell2Ds.push_back(tempVert);
-            mesh.EdgesCell2Ds.push_back(tempEdge);
+            // Aggiornamento della mesh.
+            mesh.NumberOfCell0Ds = map0D.size();
+            mesh.IdCell0Ds = id0;
+            mesh.CoordinatesCell0Ds = map0D;
+
+
+            mesh.NumberOfCell1Ds = id1.size();
+            mesh.IdCell1Ds = id1;
+            vector<unsigned int> tempEdge;
+            for (const auto& edge : map1D) {
+                tempEdge.push_back(edge.first);
+                tempEdge.push_back(edge.second);
+            }
+            mesh.VerticesCell1Ds.push_back(tempEdge);
+
+            mesh.NumberOfCell2Ds = number_of_sp[m];
+            mesh.NumberOfVertices.push_back(map0D.size());
+            mesh.NumberOfEdges.push_back(id1.size());
+
+            result.push_back(mesh);
         }
-
-        // Aggiornamento della mesh.
-        mesh.NumberOfCell0Ds = map0D.size();
-        mesh.IdCell0Ds = id0;
-        mesh.CoordinatesCell0Ds = map0D;
-
-
-        mesh.NumberOfCell1Ds = id1.size();
-        mesh.IdCell1Ds = id1;
-        vector<unsigned int> tempEdge;
-        for (const auto& edge : map1D) {
-            tempEdge.push_back(edge.first);
-            tempEdge.push_back(edge.second);
-        }
-        mesh.VerticesCell1Ds.push_back(tempEdge);
-
-        mesh.NumberOfCell2Ds = number_of_sp[m];
-        mesh.NumberOfVertices.push_back(map0D.size());
-        mesh.NumberOfEdges.push_back(id1.size());
-
-        result.push_back(mesh);
     }
-
 
     return true;
 }

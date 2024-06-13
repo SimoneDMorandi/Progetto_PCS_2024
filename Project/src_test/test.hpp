@@ -137,7 +137,7 @@ TEST(Find_Traces, ValidTraces)
 {
     // Caso 1: le fratture non si intersecano.
     Fractures fractures_list;
-    Traces traces_list0 = {};
+    Traces traces_list1 = {};
 
     fractures_list.N_frac = 2;
     fractures_list.frac_id = {0, 1};
@@ -152,11 +152,11 @@ TEST(Find_Traces, ValidTraces)
     fractures_list.trace_type[1].first.reserve(1);
     fractures_list.trace_type[1].first.reserve(1);
 
-    Find_Traces(fractures_list, traces_list0);
+    Find_Traces(fractures_list, traces_list1);
 
-    ASSERT_TRUE(traces_list0.traces_id.empty());
-    ASSERT_TRUE(traces_list0.traces_gen.empty());
-    ASSERT_TRUE(traces_list0.traces_points.empty());
+    ASSERT_TRUE(traces_list1.traces_id.empty());
+    ASSERT_TRUE(traces_list1.traces_gen.empty());
+    ASSERT_TRUE(traces_list1.traces_points.empty());
 
     // Caso 2: traccia interna.
     Traces traces_list2;

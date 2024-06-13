@@ -48,7 +48,6 @@ struct PolygonalMesh
 
     // Cell2D.
     unsigned int NumberOfCell2Ds = 0;
-    //vector<unsigned int> IdCell2Ds = {}; non li chiede
     vector<unsigned int> NumberOfVertices = {}; // num vertici
     vector<unsigned int> NumberOfEdges = {}; // num lati
     vector<vector<unsigned int>> VerticesCell2Ds = {}; // id vertici
