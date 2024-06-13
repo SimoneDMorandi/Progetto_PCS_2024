@@ -1,0 +1,87 @@
+@startuml
+left to right direction
+class Fractures {
+  -<color:Snow>N_frac:        <color:DarkSalmon>unsigned int 
+  -<color:Snow>id:                <color:DarkSalmon>vector<unsigned int>
+  -<color:Snow>N_vert:        <color:DarkSalmon>vector<unsigned int>
+  -<color:Snow>frac_vert:    <color:DarkSalmon>vector<vector<Vector3d>>
+  -<color:Snow>trace_type: <color:DarkSalmon>vector<pair<vector<unsigned int>,vector<unsigned int>>>
+}
+skinparam note {
+    BackgroundColor DeepSkyBlue
+}
+
+note right of Fractures::N_frac
+<color:Black>Total number of fractures.
+end note
+note right of Fractures::id
+<color:Black>Id of each fracture.
+end note
+note right of Fractures::N_vert
+<color:Black>Number of vertices for each fracture.
+end note
+note right of Fractures::frac_vert
+<color:Black>Each vector contains the set of coordinates of a fracture.
+end note
+note right of Fractures::trace_type
+<color:Black>This vector contains, for each fracture, a pair of two vectors: 
+<color:Black>One with the "Ids" of the traces belonging to that fracture.
+<color:Black>One with the corresponding "Tips" values of the traces.
+end note
+
+class Traces {
+    -<color:Snow>traces_id:         <color:DarkSalmon>vector<unsigned int>
+    -<color:Snow>traces_gen:     <color:DarkSalmon>vector<vector<unsigned int>> 
+    -<color:Snow>traces_points: <color:DarkSalmon>vector<vector<Vector3d>>
+    -<color:Snow>traces_length: <color:DarkSalmon>vector<double> 
+}
+
+top to bottom direction
+note left of Traces::traces_id
+<color:Black>Id of each trace.
+end note
+note left of Traces::traces_gen
+<color:Black>The couple of generating fractures for each trace.
+end note
+note left of Traces::traces_points
+<color:Black>Each vector contains the set of coordinates that represents each trace.
+end note
+note left of Traces::traces_length
+<color:Black>Length of each trace.
+end note
+
+package "Main" as main {
+abstract class Main_Functions{
+  +<color:DeepSkyBlue>cutPolygons<color:DarkSalmon>(<color:SpringGreen>Fractures, Traces,<color:DarkSalmon> found_polygons): bool 
+  +<color:DeepSkyBlue>Export_Paraview<color:DarkSalmon>(found_polygons): void
+}
+}
+note right of Main_Functions::cutPolygons
+<color:Black> This function initialize a queue with the vertices of each fracture that has at least a trace. 
+<color:Black>Then calls two recursive functions.
+end note
+note right of Main_Functions::Export_Paraview
+<color:Black> This function exports the sub-polygons on Paraview using UCDUtilities.
+end note
+Main_Functions <-up--> Traces
+Main_Functions <-up--> Fractures
+cutPolygons <-up-- Main_Functions
+abstract class cutPolygons{
++<color:DeepSkyBlue>extendTracesToEdges<color:DarkSalmon>(<color:SpringGreen>Fractures.frac_vertices, Traces.traces_points<color:DarkSalmon>): pair<vector<Vector3d>,vector<Vector3d>>
++<color:DeepSkyBlue>subPolygons<color:DarkSalmon>(<color:SpringGreen>Fractures.frac_vertices, Traces.traces_points,<color:DarkSalmon> tip): pair<vector<Vector3d>,vector<Vector3d>>
+
+}
+note left of cutPolygons::extendTracesToEdges
+<color:Black> This function extend the trace and return the coordinates of the edges containing the extended trace and the coordinates of the extended trace.
+end note
+note left of cutPolygons::subPolygons
+<color:Black> This function builds the sub-polygons reading the coordinates of the initial fracture and the coordinates of the extended trace.
+<color:Black> The found polygons are saved in a queue.
+end note
+Main_Functions --left--> UCDUtilities
+class UCDUtilities{
+}
+note left of UCDUtilities
+<color:Black> This class contains the functions that export the data onto a file suitable for Paraview.
+end note
+@enduml

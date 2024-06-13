@@ -1,0 +1,128 @@
+@startuml
+left to right direction
+class Fractures {
+  -<color:Snow>N_frac:        <color:DarkSalmon>unsigned int 
+  -<color:Snow>id:                <color:DarkSalmon>vector<unsigned int>
+  -<color:Snow>N_vert:        <color:DarkSalmon>vector<unsigned int>
+  -<color:Snow>frac_vert:    <color:DarkSalmon>vector<vector<Vector3d>>
+  -<color:Snow>trace_type: <color:DarkSalmon>vector<pair<vector<unsigned int>,vector<unsigned int>>>
+}
+skinparam note {
+    BackgroundColor DeepSkyBlue
+}
+
+note right of Fractures::N_frac
+<color:Black>Total number of fractures.
+end note
+note right of Fractures::id
+<color:Black>Id of each fracture.
+end note
+note right of Fractures::N_vert
+<color:Black>Number of vertices for each fracture.
+end note
+note right of Fractures::frac_vert
+<color:Black>Each vector contains the set of coordinates of a fracture.
+end note
+note right of Fractures::trace_type
+<color:Black>This vector contains, for each fracture, a pair of two vectors: 
+<color:Black>One with the "Ids" of the traces belonging to that fracture.
+<color:Black>One with the corresponding "Tips" values of the traces.
+end note
+
+class Traces {
+    -<color:Snow>traces_id:         <color:DarkSalmon>vector<unsigned int>
+    -<color:Snow>traces_gen:     <color:DarkSalmon>vector<vector<unsigned int>> 
+    -<color:Snow>traces_points: <color:DarkSalmon>vector<vector<Vector3d>>
+    -<color:Snow>traces_length: <color:DarkSalmon>vector<double> 
+}
+
+top to bottom direction
+note left of Traces::traces_id
+<color:Black>Id of each trace.
+end note
+note left of Traces::traces_gen
+<color:Black>The couple of generating fractures for each trace.
+end note
+note left of Traces::traces_points
+<color:Black>Each vector contains the set of coordinates that represents each trace.
+end note
+note left of Traces::traces_length
+<color:Black>Length of each trace.
+end note
+
+package "Main" as main {
+abstract class Main_Functions{
+  +<color:DeepSkyBlue>importFractures<color:DarkSalmon>(path, <color:SpringGreen>Fractures<color:DarkSalmon>)<color:DeepSkyBlue>: <color:DarkSalmon>bool
+  +<color:DeepSkyBlue>Find_Traces<color:DarkSalmon>(<color:SpringGreen>Fractures, Traces<color:DarkSalmon>)<color:DeepSkyBlue>: <color:DarkSalmon>void    
+  +<color:DeepSkyBlue>Export_traces_Info<color:DarkSalmon>(<color:SpringGreen>Traces<color:DarkSalmon>)<color:DeepSkyBlue>:   <color:DarkSalmon>bool           
++<color:DeepSkyBlue>Sort_Traces<color:DarkSalmon>(<color:SpringGreen>Fractures, Traces<color:DarkSalmon>)<color:DeepSkyBlue>:<color:DarkSalmon>bool          
++<color:DeepSkyBlue>Export_traces_Type<color:DarkSalmon>(<color:SpringGreen>Fractures,<color:DarkSalmon>)<color:DeepSkyBlue>:<color:DarkSalmon>void
++<color:DeepSkyBlue>Export_Paraview<color:DarkSalmon>(<color:SpringGreen>Fractures, Traces<color:DarkSalmon>)<color:DeepSkyBlue>:<color:DarkSalmon>void          
+}
+}
+
+note left of Main_Functions::importFractures
+<color:Black>Imports all the data from the DFN file and fills Fractures, while initializing trace_type.
+end note
+note left of Main_Functions::Export_traces_Info
+<color:Black>Prints infos of the traces onto an output file.
+end note
+note left of Main_Functions::Export_traces_Type
+<color:Black>Prints, for each fracture, onto an output file: 
+<color:Black>The "IDs" of the traces that belong to that fracture,
+<color:Black>The "Tips" value of each trace,
+<color:Black>The lengths of the traces. 
+end note
+note left of Main_Functions::Export_Paraview
+<color:Black> This function exports the fractures and the relative traces on Paraview using UCDUtilities.
+end note
+Main_Functions <-up--> Traces
+Main_Functions <-up--> Fractures
+Main_Functions <-right--> UCDUtilities
+note right of UCDUtilities
+<color:Black>This class contains the functions that export the data onto a file suitable for Paraview.
+end note
+abstract class Find_Traces {
++<color:DeepSkyBlue>Calculate_Bounding_Box<color:DarkSalmon>(fracture):        vector<Vector3d>
++<color:DeepSkyBlue>pianoFrattura<color:DarkSalmon>(v1, v2, v3):                         Vector4d
++<color:DeepSkyBlue>equazioneRetta<color:DarkSalmon>(v1,v2) :                           pair<Vector4, Vector4d>
++<color:DeepSkyBlue>check_pass<color:DarkSalmon>(pi1, pi2, point, epsilon):      bool
+}
+ 
+Find_Traces <-[hidden]- Main_Functions
+Find_Traces <-up- Main_Functions
+note bottom of Find_Traces
+<color:Black> This function computes the traces of each fracture, fills "trace_type" and "Traces".
+end note
+
+note right of Find_Traces::Calculate_Bounding_Box
+<color:Black> Calculates the maximum and the minimum coordinates of a fracture.
+end note
+note right of Find_Traces::pianoFrattura
+<color:Black> Calculates the parameters of the plane containing a fracture, given two edges.
+end note
+note right of Find_Traces::equazioneRetta
+<color:Black> Calculates the line of intersection between two planes in parametric form.
+end note
+note right of Find_Traces::check_pass
+<color:Black> Cheks whether a point (belonging to the line where a trace lies) belongs to at least one edge of a fracture.
+end note
+
+Find_Traces --up--> Traces
+Find_Traces --up--> Fractures
+
+Find_Traces <-up[hidden]- Main_Functions
+
+Sort_Traces <-up- Main_Functions
+abstract class Sort_Traces{
++<color:DeepSkyBlue>sort_pair<color:DarkSalmon>(vector<T>& vec1, vector<unsigned int>& vec2)<color:DeepSkyBlue>:<color:DarkSalmon> void
+}
+note left of Sort_Traces
+<color:Black> This function sorts, if necessary, every pair of "trace_type".
+<color:Black> The first sorting is done accordingly to the values of "Tips".
+<color:Black> The second sorting is done accordingly to the values of the lengths relative to the "Ids". 
+end note
+note bottom of Sort_Traces
+<color:Black> This function sorts the first vector and transfers the swaps onto the second vector.
+end note
+@endumll
